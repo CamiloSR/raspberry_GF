@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Download latest from github: 
+# Download latest from GitHub: 
 # wget https://raw.githubusercontent.com/omiq/piusb/main/setup.sh -O setup.sh
 # chmod +x setup.sh
 # sudo ./setup.sh
@@ -15,8 +15,8 @@ if [[ $EUID -ne 0 ]]; then
     exit
 fi
 
-# Set your desired USB image name here
-USB_IMAGE_NAME="PiUSB_GAMMA_CALMAR"
+# Set your desired USB image name here (this will be used for the volume label, mount point, and Samba share name)
+USB_IMAGE_NAME="piusb_calmar_gamma_1"
 
 # Download the watchdog script
 wget https://raw.githubusercontent.com/omiq/piusb/main/usb_share_watchdog.py -O usb_share_watchdog.py
@@ -28,9 +28,9 @@ echo "dwc2" >> /etc/modules
 # Set the size as appropriate (in megabytes)
 # Example sizes:
 # 1GB   = 1024
-# 2GB   = 2048
-# 4GB   = 4096
-USB_SIZE_MB=2048  # Adjust this value as needed
+# 16GB  = 16384
+# 32GB  = 32768
+USB_SIZE_MB=1024  # Adjust this value as needed
 
 echo ""
 echo ""
@@ -52,9 +52,10 @@ echo ""
 echo "Mounting the storage"
 echo "=========================================================="
 echo ""
-mkdir -p /mnt/usbstick
-chmod +w /mnt/usbstick
-echo "/piusb.bin /mnt/usbstick vfat rw,users,user,exec,umask=000 0 0" >> /etc/fstab
+MOUNT_POINT="/mnt/$USB_IMAGE_NAME"
+mkdir -p "$MOUNT_POINT"
+chmod +w "$MOUNT_POINT"
+echo "/piusb.bin $MOUNT_POINT vfat rw,users,user,exec,umask=000 0 0" >> /etc/fstab
 systemctl daemon-reload
 mount -a
 sudo modprobe g_mass_storage file=/piusb.bin stall=0 ro=0
@@ -77,20 +78,15 @@ echo "=========================================================="
 echo ""
 cat <<EOT >> /etc/samba/smb.conf
 
-[usbstick]
+[$USB_IMAGE_NAME]
    comment = PiUSB
-   path = /mnt/usbstick
+   path = $MOUNT_POINT
    browseable = yes
-   writeable = yes
+   read only = yes
    guest ok = yes
    create mask = 0777
    directory mask = 0755
-   force user = root
-   force group = root
    public = yes
-   only guest = yes
-   kernel oplocks = yes
-   oplocks = False
 EOT
 
 systemctl restart smbd.service
@@ -110,7 +106,9 @@ if [ ! -f /etc/rc.local ]; then
 fi
 
 # Add the watchdog script to /etc/rc.local before the 'exit 0' line
-sed -i '/^exit 0/i sudo /usr/bin/python3 /usr/local/share/usb_share_watchdog.py &' /etc/rc.local
+if ! grep -q "usb_share_watchdog.py" /etc/rc.local; then
+    sed -i '/^exit 0/i sudo /usr/bin/python3 /usr/local/share/usb_share_watchdog.py &' /etc/rc.local
+fi
 
 # Start the watchdog script immediately
 sudo /usr/bin/python3 /usr/local/share/usb_share_watchdog.py &
