@@ -19,6 +19,18 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+# Update package lists
+echo "Updating package lists..."
+apt update || error_exit "apt update failed."
+
+# Upgrade all packages
+echo "Upgrading packages..."
+apt full-upgrade -y || error_exit "apt full-upgrade failed."
+
+# Install mtools
+echo "Installing mtools..."
+apt install mtools -y || error_exit "apt install mtools failed."
+
 # Set your desired USB image label here (FAT32 label limit: 11 characters, uppercase, no spaces)
 USB_IMAGE_LABEL="ABGAMMA1"
 
@@ -142,6 +154,10 @@ umount "$MOUNT_POINT" || error_exit "Failed to unmount USB image file."
 echo "Loading g_mass_storage module with $USB_IMAGE_FILE..."
 modprobe -r g_mass_storage || true  # Remove if already loaded
 modprobe g_mass_storage || error_exit "Failed to load g_mass_storage module."
+
+# Configure mtools
+echo "Configuring mtools..."
+echo 'drive p: file="/piusb.bin" exclusive' >> /root/.mtoolsrc || error_exit "Failed to configure .mtoolsrc."
 
 # Final message and reboot
 echo ""
