@@ -31,6 +31,12 @@ apt full-upgrade -y || error_exit "apt full-upgrade failed."
 echo "Installing mtools..."
 apt install mtools -y || error_exit "apt install mtools failed."
 
+# Install dos2unix
+echo "Installing dos2unix..."
+apt install dos2unix -y || error_exit "apt install dos2unix failed."
+
+echo "All operations completed successfully."
+
 # Set your desired USB image label here (FAT32 label limit: 11 characters, uppercase, no spaces)
 USB_IMAGE_LABEL="ABGAMMA1"
 
