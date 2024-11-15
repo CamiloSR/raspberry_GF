@@ -155,15 +155,6 @@ echo "Loading g_mass_storage module with $USB_IMAGE_FILE..."
 modprobe -r g_mass_storage || true  # Remove if already loaded
 modprobe g_mass_storage || error_exit "Failed to load g_mass_storage module."
 
-# Configure mtools if not already set
-echo "Configuring mtools..."
-if ! grep -Fxq 'drive p: file="/piusb.bin" exclusive' /root/.mtoolsrc; then
-    echo 'drive p: file="/piusb.bin" exclusive' >> /root/.mtoolsrc || error_exit "Failed to configure .mtoolsrc."
-    echo "mtoolsrc configured successfully."
-else
-    echo ".mtoolsrc already configured."
-fi
-
 # Final message and reboot
 echo ""
 echo "USB mass storage setup is complete."
