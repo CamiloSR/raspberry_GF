@@ -97,11 +97,6 @@ if [ -f "$USB_IMAGE_FILE" ]; then
         echo "Unloading g_mass_storage module..."
         modprobe -r g_mass_storage || error_exit "Failed to unload g_mass_storage module."
     fi
-    # Unmount if mounted
-    if mount | grep -q "$USB_IMAGE_FILE"; then
-        echo "Unmounting $USB_IMAGE_FILE..."
-        umount "$USB_IMAGE_FILE" || error_exit "Failed to unmount $USB_IMAGE_FILE."
-    fi
     rm -f "$USB_IMAGE_FILE" || error_exit "Failed to remove existing USB image."
 fi
 
@@ -113,30 +108,19 @@ dd if=/dev/zero of="$USB_IMAGE_FILE" bs=1M count="$USB_SIZE_MB" status=progress 
 echo "Formatting $USB_IMAGE_FILE with FAT32 filesystem..."
 mkdosfs -F 32 --mbr=yes -n "$USB_IMAGE_LABEL" "$USB_IMAGE_FILE" || error_exit "Failed to format USB image file."
 
-# Remove any existing mount point
-MOUNT_POINT="/mnt/$(echo "$USB_IMAGE_LABEL" | tr '[:upper:]' '[:lower:]')"
-if mount | grep -q "$MOUNT_POINT"; then
-    echo "Unmounting existing mount point $MOUNT_POINT..."
-    umount "$MOUNT_POINT" || error_exit "Failed to unmount $MOUNT_POINT."
-fi
+# Set appropriate permissions on the USB image file
+chmod 666 "$USB_IMAGE_FILE" || error_exit "Failed to set permissions on USB image file."
 
-# Remove existing mount point directory if exists
-if [ -d "$MOUNT_POINT" ]; then
-    echo "Removing existing mount point directory $MOUNT_POINT..."
-    rm -rf "$MOUNT_POINT" || error_exit "Failed to remove $MOUNT_POINT."
-fi
+# Install mtools
+echo "Installing mtools..."
+apt-get update || error_exit "Failed to update package lists."
+apt-get install -y mtools || error_exit "Failed to install mtools."
 
-# Create the mount point directory
-echo "Creating mount point directory $MOUNT_POINT..."
-mkdir -p "$MOUNT_POINT" || error_exit "Failed to create mount point directory."
-
-# Mount the USB image file
-echo "Mounting $USB_IMAGE_FILE to $MOUNT_POINT..."
-mount -o loop,ro "$USB_IMAGE_FILE" "$MOUNT_POINT" || error_exit "Failed to mount USB image file."
-
-# Unmount to avoid simultaneous access
-echo "Unmounting $USB_IMAGE_FILE from $MOUNT_POINT to prevent conflicts..."
-umount "$MOUNT_POINT" || error_exit "Failed to unmount USB image file."
+# Configure mtools to access the USB image file
+MTOOLSRC="/root/.mtoolsrc"
+echo "Configuring mtools..."
+echo "drive p: file=\"$USB_IMAGE_FILE\" exclusive" > "$MTOOLSRC" || error_exit "Failed to create $MTOOLSRC."
+chmod 600 "$MTOOLSRC" || error_exit "Failed to set permissions on $MTOOLSRC."
 
 # Load the g_mass_storage module with the USB image
 echo "Loading g_mass_storage module with $USB_IMAGE_FILE..."
