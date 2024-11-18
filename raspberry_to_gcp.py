@@ -104,11 +104,13 @@ def parse_log_line(log_line):
     try:
         # Extract and parse the original timestamp
         original_timestamp = values[0]
-        dt = datetime.strptime(original_timestamp, "%d-%m-%Y %H:%M:%S").replace(tzinfo=ZoneInfo("UTC"))
+        local_tz = ZoneInfo(TIMEZONES.get(CURRENT_LOCATION, "UTC"))
+        # Parse the original timestamp with timezone
+        dt = datetime.strptime(original_timestamp, "%d-%m-%Y %H:%M:%S").replace(tzinfo=local_tz)
         
-        # Convert timestamp to the appropriate timezone based on current location
-        dt = dt.astimezone(ZoneInfo(TIMEZONES.get(CURRENT_LOCATION, "UTC")))
-        formatted_timestamp = dt.isoformat()
+        # Convert timestamp to UTC
+        dt_utc = dt.astimezone(ZoneInfo("UTC"))
+        formatted_timestamp = dt_utc.isoformat()
         
         # Create and return a dictionary with all required fields
         return {
@@ -177,6 +179,8 @@ def update_firestore(data):
         # Handle exceptions during the Firestore update
         print(f"Firestore update error: {e}")
 
+last_sent = None  # Initialize last_sent variable
+
 def process_line(last_line, new_line):
     """
     Processes the latest line from the log file by determining the machine's status
@@ -186,6 +190,7 @@ def process_line(last_line, new_line):
         last_line (str): The third last line from the log file.
         new_line (str): The most recent line from the log file.
     """
+    global last_sent
     try:
         # Extract the second last value from the new line and the third last line
         last_digit = int(new_line.strip().split(";")[-2])
@@ -197,6 +202,9 @@ def process_line(last_line, new_line):
         # Append the status to the new line
         new_line_with_status = f"{new_line.strip()};{status}"
         
+        if new_line_with_status == last_sent:
+            return  # Do nothing if same as last sent
+        
         # Parse the modified log line
         data = parse_log_line(new_line_with_status)
         
@@ -204,6 +212,7 @@ def process_line(last_line, new_line):
             # Send the parsed data to BigQuery and update Firestore
             send_to_bigquery(data)
             update_firestore(data)
+            last_sent = new_line_with_status  # Update last_sent
     except (ValueError, IndexError) as e:
         # Handle any errors during line processing
         print(f"Line processing error: {e}")
@@ -215,6 +224,7 @@ def continuously_monitor(interval=1):
     Parameters:
         interval (int): Time in seconds between each check of the log file.
     """
+    global last_sent
     # Initialize a deque to store the last three lines of the log file
     last_three = deque(maxlen=3)
     
@@ -230,8 +240,9 @@ def continuously_monitor(interval=1):
             
             # If there are at least three lines, process the last two
             if len(last_three) == 3:
-                third_last, _, last = last_three
-                process_line(third_last, last)
+                third_last, second_last, last = last_three
+                if last != last_sent:
+                    process_line(third_last, last)
         except Exception as e:
             # Handle any unexpected errors during monitoring
             print(f"Monitoring error: {e}")
