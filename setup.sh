@@ -27,27 +27,18 @@ apt update || error_exit "apt update failed."
 echo "Upgrading packages..."
 apt full-upgrade -y || error_exit "apt full-upgrade failed."
 
-# Install mtools
-echo "Installing mtools..."
-apt install mtools -y || error_exit "apt install mtools failed."
-
-# Install dos2unix
-echo "Installing dos2unix..."
-apt install dos2unix -y || error_exit "apt install dos2unix failed."
+# Install mtools and dos2unix
+echo "Installing mtools and dos2unix..."
+apt install mtools dos2unix -y || error_exit "Package installation failed."
 
 echo "All operations completed successfully."
 
-# Set your desired USB image label here (FAT32 label limit: 11 characters, uppercase, no spaces)
+# Set your desired USB image label (FAT32 label limit: 11 characters, uppercase, no spaces)
 USB_IMAGE_LABEL="PIUSB"
 
-# Validate USB_IMAGE_LABEL length
-if [ ${#USB_IMAGE_LABEL} -gt 11 ]; then
-    error_exit "USB_IMAGE_LABEL must be 11 characters or fewer."
-fi
-
-# Validate USB_IMAGE_LABEL characters
-if [[ ! "$USB_IMAGE_LABEL" =~ ^[A-Z0-9_]+$ ]]; then
-    error_exit "USB_IMAGE_LABEL must contain only uppercase letters, numbers, and underscores."
+# Validate USB_IMAGE_LABEL length and characters
+if [ ${#USB_IMAGE_LABEL} -gt 11 ] || [[ ! "$USB_IMAGE_LABEL" =~ ^[A-Z0-9_]+$ ]]; then
+    error_exit "USB_IMAGE_LABEL must be up to 11 uppercase letters, numbers, or underscores."
 fi
 
 # Define the USB image file path
@@ -62,30 +53,16 @@ echo "USB Image Size: ${USB_SIZE_MB}MB"
 # Enable dwc2 overlay in /boot/firmware/config.txt if not already enabled
 CONFIG_TXT="/boot/firmware/config.txt"
 
-# Check if dtoverlay=dwc2 exists under [all] section with dr_mode=peripheral
-if ! awk '/\[all\]/ {in_all=1} in_all && /^dtoverlay=dwc2,dr_mode=peripheral/ {found=1; exit} END {exit !found}' "$CONFIG_TXT"; then
-    echo "Configuring dwc2 overlay under [all] in $CONFIG_TXT..."
-
-    # Backup config.txt before modification
+if ! grep -q "^dtoverlay=dwc2,dr_mode=peripheral" "$CONFIG_TXT"; then
+    echo "Configuring dwc2 overlay in $CONFIG_TXT..."
     cp "$CONFIG_TXT" "$CONFIG_TXT.bak"
-
-    # Comment out any existing `dtoverlay=dwc2` lines not already commented
     sed -i '/^[^#]*dtoverlay=dwc2/s/^/#/' "$CONFIG_TXT"
-
-    # Ensure [all] section exists, then add `dtoverlay=dwc2,dr_mode=peripheral` under it
-    if ! grep -q "^\[all\]" "$CONFIG_TXT"; then
-        echo "[all]" >> "$CONFIG_TXT"
-    fi
-
-    # Append `dtoverlay=dwc2,dr_mode=peripheral` under [all]
-    sed -i '/^\[all\]/a dtoverlay=dwc2,dr_mode=peripheral' "$CONFIG_TXT" || error_exit "Failed to modify $CONFIG_TXT."
+    echo "dtoverlay=dwc2,dr_mode=peripheral" >> "$CONFIG_TXT" || error_exit "Failed to modify $CONFIG_TXT."
 fi
 
 # Ensure 'dwc2' and 'g_mass_storage' modules are in /etc/modules
 MODULES_FILE="/etc/modules"
-MODULES=("dwc2" "g_mass_storage")
-
-for module in "${MODULES[@]}"; do
+for module in dwc2 g_mass_storage; do
     if ! grep -q "^$module$" "$MODULES_FILE"; then
         echo "Adding $module to $MODULES_FILE..."
         echo "$module" >> "$MODULES_FILE" || error_exit "Failed to add $module to $MODULES_FILE."
@@ -94,27 +71,20 @@ for module in "${MODULES[@]}"; do
     fi
 done
 
-# Create a modprobe configuration file for g_mass_storage to ensure parameters persist across reboots
+# Create modprobe configuration for g_mass_storage
 G_MASS_STORAGE_CONF="/etc/modprobe.d/g_mass_storage.conf"
-
 echo "Configuring g_mass_storage module parameters..."
-echo "options g_mass_storage file=$USB_IMAGE_FILE removable=1 ro=0 stall=1 nofua=1" > "$G_MASS_STORAGE_CONF" || error_exit "Failed to create $G_MASS_STORAGE_CONF."
+echo "options g_mass_storage file=$USB_IMAGE_FILE removable=1 ro=0 stall=0" > "$G_MASS_STORAGE_CONF" || error_exit "Failed to create $G_MASS_STORAGE_CONF."
 
 # Reload systemd and modprobe configurations
-echo "Reloading systemd daemon to apply configuration changes..."
+echo "Reloading configurations..."
 systemctl daemon-reload || error_exit "Failed to reload systemd daemon."
-
-echo "Reloading modprobe configurations..."
 depmod -a || error_exit "Failed to reload modprobe configurations."
 
 # Remove existing USB image if it exists
 if [ -f "$USB_IMAGE_FILE" ]; then
     echo "Removing existing USB image $USB_IMAGE_FILE..."
-    # Unload g_mass_storage module if loaded
-    if lsmod | grep -q "g_mass_storage"; then
-        echo "Unloading g_mass_storage module..."
-        modprobe -r g_mass_storage || error_exit "Failed to unload g_mass_storage module."
-    fi
+    modprobe -r g_mass_storage || true  # Remove if already loaded
     rm -f "$USB_IMAGE_FILE" || error_exit "Failed to remove existing USB image."
 fi
 
@@ -124,11 +94,14 @@ dd if=/dev/zero of="$USB_IMAGE_FILE" bs=1M count="$USB_SIZE_MB" status=progress 
 
 # Format the USB image with FAT32 filesystem
 echo "Formatting $USB_IMAGE_FILE with FAT32 filesystem..."
-mkdosfs -F 32 --mbr=yes -n "$USB_IMAGE_LABEL" "$USB_IMAGE_FILE" || error_exit "Failed to format USB image file."
+mkdosfs -F 32 -n "$USB_IMAGE_LABEL" "$USB_IMAGE_FILE" || error_exit "Failed to format USB image file."
+
+# Set permissions on the USB image file
+chmod 666 "$USB_IMAGE_FILE" || error_exit "Failed to set permissions on USB image file."
 
 # Load the g_mass_storage module with the USB image
 echo "Loading g_mass_storage module with $USB_IMAGE_FILE..."
-modprobe -r g_mass_storage || true  # Remove if already loaded
+modprobe -r g_mass_storage || true
 modprobe g_mass_storage || error_exit "Failed to load g_mass_storage module."
 
 # Final message and reboot
