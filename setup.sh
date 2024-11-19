@@ -38,7 +38,7 @@ apt install dos2unix -y || error_exit "apt install dos2unix failed."
 echo "All operations completed successfully."
 
 # Set your desired USB image label here (FAT32 label limit: 11 characters, uppercase, no spaces)
-USB_IMAGE_LABEL="ABGAMMA1"
+USB_IMAGE_LABEL="PIUSB"
 
 # Validate USB_IMAGE_LABEL length
 if [ ${#USB_IMAGE_LABEL} -gt 11 ]; then
