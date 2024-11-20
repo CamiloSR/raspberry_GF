@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # USB Gadget Configuration Script
+# /usr/bin/usb-gadget.sh
 
 # Variables (Replace with actual values)
 VID="0xabcd"                           # Vendor ID from working USB
