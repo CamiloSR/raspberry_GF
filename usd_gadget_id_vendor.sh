@@ -10,7 +10,7 @@ bcdDevice="0x0100"                     # Device version (1.00)
 bcdUSB="0x0200"                        # USB version (2.0)
 MANUFACTURER="General"                 # Manufacturer string
 PRODUCT="General UDisk USB Device"      # Product string
-SERIALNUMBER="Љ"                       # Serial number from working USB
+SERIALNUMBER="010203040506"                       # Serial number from working USB
 USB_IMAGE="/piusb.bin"                # Path to your USB image
 
 GADGET_DIR="/sys/kernel/config/usb_gadget/g1"
