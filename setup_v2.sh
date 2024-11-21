@@ -184,6 +184,10 @@ ln -s "$GADGET_DIR/functions/mass_storage.0" "$GADGET_DIR/configs/c.1/" || error
 
 # Enable the gadget
 UDC=$(ls /sys/class/udc | head -n1) || error_exit "No UDC found."
+if [ -z "$UDC" ]; then
+    error_exit "No UDC found. Please ensure USB OTG is enabled and a UDC is present."
+fi
+
 echo "$UDC" > "$GADGET_DIR/UDC" || error_exit "Failed to enable gadget."
 
 # Automate gadget setup on boot by creating a systemd service
@@ -300,15 +304,11 @@ echo 1 > "$GADGET_DIR/functions/mass_storage.0/lun.0/nofua"
 ln -s "$GADGET_DIR/functions/mass_storage.0" "$GADGET_DIR/configs/c.1/" || exit 1
 
 # Enable the gadget
-UDC=$(ls /sys/class/udc | head -n1) || exit 1
+UDC=$(ls /sys/class/udc | head -n1)
 echo "$UDC" > "$GADGET_DIR/UDC"
 EOF
 
-# Convert the usb-gadget.sh script to Unix line endings
-echo "Converting /usr/bin/usb-gadget.sh to Unix line endings..."
-dos2unix /usr/bin/usb-gadget.sh || error_exit "Failed to convert usb-gadget.sh line endings."
-
-# Make usb-gadget.sh executable
+# Make the script executable
 echo "Making usb-gadget.sh executable..."
 chmod +x /usr/bin/usb-gadget.sh || error_exit "Failed to make usb-gadget.sh executable."
 
