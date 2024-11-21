@@ -32,7 +32,7 @@ apt install -y mtools dos2unix python3-pip || error_exit "Package installation f
 # Set USB image parameters
 USB_IMAGE_LABEL="PIUSB"
 USB_IMAGE_FILE="/piusb.bin"
-USB_SIZE_MB=4096  # Adjust size as needed
+USB_SIZE_MB=4096  # Size in MB
 
 # Validate USB_IMAGE_LABEL
 if [ ${#USB_IMAGE_LABEL} -gt 11 ] || [[ ! "$USB_IMAGE_LABEL" =~ ^[A-Z0-9_]+$ ]]; then
@@ -101,7 +101,29 @@ echo "Setting up USB Gadget with libcomposite..."
 # Clean up any existing gadget
 if [ -d "$GADGET_DIR" ]; then
     echo "Cleaning up existing gadget..."
-    rm -rf "$GADGET_DIR" || true
+
+    # Disable the gadget by unbinding the UDC
+    if [ -w "$GADGET_DIR/UDC" ]; then
+        echo "" > "$GADGET_DIR/UDC"
+    fi
+
+    # Remove all functions
+    FUNCTIONS=$(ls "$GADGET_DIR/functions/")
+    for FUNC in $FUNCTIONS; do
+        rm -rf "$GADGET_DIR/functions/$FUNC"
+    done
+
+    # Remove all configurations
+    CONFIGS=$(ls "$GADGET_DIR/configs/")
+    for CFG in $CONFIGS; do
+        rm -rf "$GADGET_DIR/configs/$CFG"
+    done
+
+    # Remove strings
+    rm -rf "$GADGET_DIR/strings/"*
+
+    # Finally, remove the gadget directory
+    rm -rf "$GADGET_DIR" || error_exit "Failed to remove gadget directory."
 fi
 
 # Create gadget directory
@@ -226,10 +248,6 @@ ln -s "$GADGET_DIR/functions/mass_storage.0" "$GADGET_DIR/configs/c.1/" || exit 
 UDC=$(ls /sys/class/udc | head -n1)
 echo "$UDC" > "$GADGET_DIR/UDC"
 EOF
-
-# Convert the usb-gadget.sh script to Unix line endings
-echo "Converting /usr/bin/usb-gadget.sh to Unix line endings..."
-dos2unix /usr/bin/usb-gadget.sh || error_exit "Failed to convert usb-gadget.sh line endings."
 
 # Make usb-gadget.sh executable
 echo "Making usb-gadget.sh executable..."
