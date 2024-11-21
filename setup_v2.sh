@@ -1,9 +1,7 @@
 #!/bin/bash
 
 # Comprehensive USB Gadget Setup Script
-# This script configures the Raspberry Pi Zero 2 W as a USB mass storage device
-# matching the properties of a working USB device, named PIUSB.
-# It integrates creating the USB image, formatting, configuring mtools, and setting up the USB gadget.
+# Configures Raspberry Pi Zero 2 W as USB mass storage device named PIUSB
 
 set -e
 
@@ -65,7 +63,14 @@ echo w   # Write changes
 ) | fdisk "$USB_IMAGE_FILE" || error_exit "Failed to partition USB image."
 
 echo "Setting up loop device..."
-LOOP_DEVICE=$(losetup -fP "$USB_IMAGE_FILE") || error_exit "Failed to setup loop device."
+LOOP_DEVICE=$(losetup --find --show -P "$USB_IMAGE_FILE") || error_exit "Failed to setup loop device."
+
+# Wait for the partition to be available
+sleep 1
+
+if [ ! -b "${LOOP_DEVICE}p1" ]; then
+    error_exit "Partition device ${LOOP_DEVICE}p1 not found."
+fi
 
 echo "Formatting USB image with FAT32..."
 mkfs.vfat -F 32 -n "$USB_IMAGE_LABEL" "${LOOP_DEVICE}p1" || error_exit "Failed to format USB image."
@@ -102,18 +107,19 @@ fi
 # Create gadget directory
 mkdir -p "$GADGET_DIR"
 
-# USB Descriptors - Replace with actual values
-VID="058f"                        # Replace with Vendor ID from working USB (without 0x)
-PID="6387"                        # Replace with Product ID from working USB (without 0x)
-bcdDevice="0x0100"                # Device version (1.00)
-bcdUSB="0x0200"                   # USB version (2.0)
-MANUFACTURER="General"            # Manufacturer string
-PRODUCT="General UDisk USB Device" # Product string
-SERIALNUMBER="010203040506"       # Serial number from working USB
+# USB Descriptors
+VID="0xabcd"                        # Vendor ID from working USB
+PID="0x1234"                        # Product ID from working USB
+bcdDevice="0x0100"                  # Device version (1.00)
+bcdUSB="0x0200"                     # USB version (2.0)
+MANUFACTURER="General"              # Manufacturer string
+PRODUCT="General UDisk USB Device"   # Product string
+SERIALNUMBER="010203040506"         # Serial number from working USB
+USB_IMAGE="/piusb.bin"              # Path to your USB image
 
 # Set Vendor and Product ID
-echo "0x$VID" > "$GADGET_DIR/idVendor"
-echo "0x$PID" > "$GADGET_DIR/idProduct"
+echo "$VID" > "$GADGET_DIR/idVendor"
+echo "$PID" > "$GADGET_DIR/idProduct"
 
 # Set USB and device version
 echo "$bcdUSB" > "$GADGET_DIR/bcdUSB"
@@ -132,7 +138,7 @@ mkdir -p "$GADGET_DIR/configs/c.1"
 
 # Add mass storage function
 mkdir -p "$GADGET_DIR/functions/mass_storage.0"
-echo "$USB_IMAGE_FILE" > "$GADGET_DIR/functions/mass_storage.0/lun.0/file"
+echo "$USB_IMAGE" > "$GADGET_DIR/functions/mass_storage.0/lun.0/file"
 echo 0 > "$GADGET_DIR/functions/mass_storage.0/lun.0/removable"
 echo 1 > "$GADGET_DIR/functions/mass_storage.0/lun.0/nofua"
 
@@ -168,24 +174,19 @@ cat <<'EOF' > /usr/bin/usb-gadget.sh
 
 GADGET_DIR="/sys/kernel/config/usb_gadget/g1"
 
-# Variables (Replace with actual values if needed)
-VID="058f"                           # Vendor ID from working USB (without 0x)
-PID="6387"                           # Product ID from working USB (without 0x)
-bcdDevice="0x0100"                   # Device version (1.00)
-bcdUSB="0x0200"                      # USB version (2.0)
-MANUFACTURER="General"               # Manufacturer string
-PRODUCT="General UDisk USB Device"    # Product string
-SERIALNUMBER="010203040506"          # Serial number from working USB
-USB_IMAGE="/piusb.bin"               # Path to your USB image
+# Variables
+VID="0xabcd"                           # Vendor ID from working USB
+PID="0x1234"                           # Product ID from working USB
+bcdDevice="0x0100"                     # Device version (1.00)
+bcdUSB="0x0200"                        # USB version (2.0)
+MANUFACTURER="General"                 # Manufacturer string
+PRODUCT="General UDisk USB Device"      # Product string
+SERIALNUMBER="010203040506"            # Serial number from working USB
+USB_IMAGE="/piusb.bin"                 # Path to your USB image
 
 # Ensure configfs is mounted
 if ! mountpoint -q /sys/kernel/config; then
     mount -t configfs none /sys/kernel/config || exit 1
-fi
-
-# Ensure gadget directory exists
-if [ ! -d "$GADGET_DIR" ]; then
-    mkdir -p "$GADGET_DIR"
 fi
 
 # Clean up any existing functions
@@ -194,8 +195,8 @@ rm -rf "$GADGET_DIR"/configs/c.1
 rm -rf "$GADGET_DIR"/strings/0x409
 
 # Set Vendor and Product ID
-echo "0x$VID" > "$GADGET_DIR/idVendor"
-echo "0x$PID" > "$GADGET_DIR/idProduct"
+echo "$VID" > "$GADGET_DIR/idVendor"
+echo "$PID" > "$GADGET_DIR/idProduct"
 
 # Set USB and device version
 echo "$bcdUSB" > "$GADGET_DIR/bcdUSB"
@@ -226,13 +227,24 @@ UDC=$(ls /sys/class/udc | head -n1)
 echo "$UDC" > "$GADGET_DIR/UDC"
 EOF
 
+# Convert the usb-gadget.sh script to Unix line endings
+echo "Converting /usr/bin/usb-gadget.sh to Unix line endings..."
+dos2unix /usr/bin/usb-gadget.sh || error_exit "Failed to convert usb-gadget.sh line endings."
+
 # Make usb-gadget.sh executable
+echo "Making usb-gadget.sh executable..."
 chmod +x /usr/bin/usb-gadget.sh || error_exit "Failed to make usb-gadget.sh executable."
 
 # Reload systemd daemon and enable the service
+echo "Reloading systemd daemon..."
+systemctl daemon-reload || error_exit "Failed to reload systemd daemon."
+
 echo "Enabling USB gadget systemd service..."
-systemctl daemon-reload
-systemctl enable usb-gadget.service
+systemctl enable usb-gadget.service || error_exit "Failed to enable usb-gadget.service."
+
+# Run the USB gadget setup now
+echo "Running USB gadget setup..."
+/usr/bin/usb-gadget.sh || error_exit "USB gadget setup failed."
 
 # Final message and reboot
 echo ""
