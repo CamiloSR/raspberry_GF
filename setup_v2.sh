@@ -29,12 +29,12 @@ apt update && apt full-upgrade -y || error_exit "Package update/upgrade failed."
 
 # Install necessary packages
 echo "Installing required packages..."
-apt install -y mtools dos2unix python3-pip configfs || error_exit "Package installation failed."
+apt install -y mtools dos2unix python3-pip || error_exit "Package installation failed."
 
 # Set USB image parameters
 USB_IMAGE_LABEL="PIUSB"
 USB_IMAGE_FILE="/piusb.bin"
-USB_SIZE_MB=2048  # Adjust size as needed
+USB_SIZE_MB=4096  # Adjust size as needed
 
 # Validate USB_IMAGE_LABEL
 if [ ${#USB_IMAGE_LABEL} -gt 11 ] || [[ ! "$USB_IMAGE_LABEL" =~ ^[A-Z0-9_]+$ ]]; then
@@ -96,7 +96,6 @@ echo "Setting up USB Gadget with libcomposite..."
 # Clean up any existing gadget
 if [ -d "$GADGET_DIR" ]; then
     echo "Cleaning up existing gadget..."
-    umount "$GADGET_DIR"/functions/mass_storage.0/lun.0/file || true
     rm -rf "$GADGET_DIR" || true
 fi
 
