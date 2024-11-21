@@ -32,7 +32,7 @@ apt install -y mtools dos2unix python3-pip || error_exit "Package installation f
 # Set USB image parameters
 USB_IMAGE_LABEL="PIUSB"
 USB_IMAGE_FILE="/piusb.bin"
-USB_SIZE_MB=4096  # Size in MB
+USB_SIZE_MB=1024  # Size in MB
 
 # Validate USB_IMAGE_LABEL
 if [ ${#USB_IMAGE_LABEL} -gt 11 ] || [[ ! "$USB_IMAGE_LABEL" =~ ^[A-Z0-9_]+$ ]]; then
@@ -130,14 +130,15 @@ fi
 mkdir -p "$GADGET_DIR"
 
 # USB Descriptors
-VID="0xabcd"                        # Vendor ID from working USB
-PID="0x1234"                        # Product ID from working USB
-bcdDevice="0x0100"                  # Device version (1.00)
-bcdUSB="0x0200"                     # USB version (2.0)
-MANUFACTURER="General"              # Manufacturer string
-PRODUCT="General UDisk USB Device"   # Product string
-SERIALNUMBER="010203040506"         # Serial number from working USB
-USB_IMAGE="/piusb.bin"              # Path to your USB image
+# Remove '0x' from VID and PID for idVendor and idProduct
+VID="abcd"                        # Vendor ID from working USB (without 0x)
+PID="1234"                        # Product ID from working USB (without 0x)
+bcdDevice="0x0100"                # Device version (1.00)
+bcdUSB="0x0200"                   # USB version (2.0)
+MANUFACTURER="General"            # Manufacturer string
+PRODUCT="General UDisk USB Device" # Product string
+SERIALNUMBER="010203040506"       # Serial number from working USB
+USB_IMAGE="/piusb.bin"            # Path to your USB image
 
 # Set Vendor and Product ID
 echo "$VID" > "$GADGET_DIR/idVendor"
@@ -197,24 +198,47 @@ cat <<'EOF' > /usr/bin/usb-gadget.sh
 GADGET_DIR="/sys/kernel/config/usb_gadget/g1"
 
 # Variables
-VID="0xabcd"                           # Vendor ID from working USB
-PID="0x1234"                           # Product ID from working USB
-bcdDevice="0x0100"                     # Device version (1.00)
-bcdUSB="0x0200"                        # USB version (2.0)
-MANUFACTURER="General"                 # Manufacturer string
-PRODUCT="General UDisk USB Device"      # Product string
-SERIALNUMBER="010203040506"            # Serial number from working USB
-USB_IMAGE="/piusb.bin"                 # Path to your USB image
+VID="abcd"                           # Vendor ID from working USB (without 0x)
+PID="1234"                           # Product ID from working USB (without 0x)
+bcdDevice="0x0100"                   # Device version (1.00)
+bcdUSB="0x0200"                      # USB version (2.0)
+MANUFACTURER="General"               # Manufacturer string
+PRODUCT="General UDisk USB Device"    # Product string
+SERIALNUMBER="010203040506"          # Serial number from working USB
+USB_IMAGE="/piusb.bin"               # Path to your USB image
 
 # Ensure configfs is mounted
 if ! mountpoint -q /sys/kernel/config; then
     mount -t configfs none /sys/kernel/config || exit 1
 fi
 
-# Clean up any existing functions
-rm -rf "$GADGET_DIR"/functions/mass_storage.0
-rm -rf "$GADGET_DIR"/configs/c.1
-rm -rf "$GADGET_DIR"/strings/0x409
+# Clean up any existing functions and configurations
+if [ -d "$GADGET_DIR" ]; then
+    echo "Cleaning up existing gadget..."
+
+    # Disable the gadget by unbinding the UDC
+    if [ -w "$GADGET_DIR/UDC" ]; then
+        echo "" > "$GADGET_DIR/UDC"
+    fi
+
+    # Remove all functions
+    FUNCTIONS=$(ls "$GADGET_DIR/functions/")
+    for FUNC in $FUNCTIONS; do
+        rm -rf "$GADGET_DIR/functions/$FUNC"
+    done
+
+    # Remove all configurations
+    CONFIGS=$(ls "$GADGET_DIR/configs/")
+    for CFG in $CONFIGS; do
+        rm -rf "$GADGET_DIR/configs/$CFG"
+    done
+
+    # Remove strings
+    rm -rf "$GADGET_DIR/strings/"*
+fi
+
+# Create gadget directory if not exists
+mkdir -p "$GADGET_DIR"
 
 # Set Vendor and Product ID
 echo "$VID" > "$GADGET_DIR/idVendor"
@@ -248,6 +272,10 @@ ln -s "$GADGET_DIR/functions/mass_storage.0" "$GADGET_DIR/configs/c.1/" || exit 
 UDC=$(ls /sys/class/udc | head -n1)
 echo "$UDC" > "$GADGET_DIR/UDC"
 EOF
+
+# Convert the usb-gadget.sh script to Unix line endings
+echo "Converting /usr/bin/usb-gadget.sh to Unix line endings..."
+dos2unix /usr/bin/usb-gadget.sh || error_exit "Failed to convert usb-gadget.sh line endings."
 
 # Make usb-gadget.sh executable
 echo "Making usb-gadget.sh executable..."
