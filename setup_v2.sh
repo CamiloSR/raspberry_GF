@@ -32,7 +32,7 @@ apt install -y mtools dos2unix python3-pip || error_exit "Package installation f
 # Set USB image parameters
 USB_IMAGE_LABEL="PIUSB"
 USB_IMAGE_FILE="/piusb.bin"
-USB_SIZE_MB=1024  # Size in MB
+USB_SIZE_MB=512  # Adjust size as needed for testing
 
 # Validate USB_IMAGE_LABEL
 if [ ${#USB_IMAGE_LABEL} -gt 11 ] || [[ ! "$USB_IMAGE_LABEL" =~ ^[A-Z0-9_]+$ ]]; then
@@ -107,30 +107,44 @@ if [ -d "$GADGET_DIR" ]; then
         echo "" > "$GADGET_DIR/UDC"
     fi
 
-    # Remove all functions
-    FUNCTIONS=$(ls "$GADGET_DIR/functions/")
-    for FUNC in $FUNCTIONS; do
-        rm -rf "$GADGET_DIR/functions/$FUNC"
+    # Wait until the UDC is unbound
+    UDC_BOUND=$(cat "$GADGET_DIR/UDC" 2>/dev/null || echo "")
+    while [ -n "$UDC_BOUND" ]; do
+        echo "Waiting for UDC to unbind..."
+        sleep 1
+        UDC_BOUND=$(cat "$GADGET_DIR/UDC" 2>/dev/null || echo "")
     done
+
+    # Remove all functions
+    if [ -d "$GADGET_DIR/functions/" ]; then
+        FUNCTIONS=$(ls "$GADGET_DIR/functions/")
+        for FUNC in $FUNCTIONS; do
+            rm -rf "$GADGET_DIR/functions/$FUNC" || echo "Warning: Failed to remove function $FUNC"
+        done
+    fi
 
     # Remove all configurations
-    CONFIGS=$(ls "$GADGET_DIR/configs/")
-    for CFG in $CONFIGS; do
-        rm -rf "$GADGET_DIR/configs/$CFG"
-    done
+    if [ -d "$GADGET_DIR/configs/" ]; then
+        CONFIGS=$(ls "$GADGET_DIR/configs/")
+        for CFG in $CONFIGS; do
+            rm -rf "$GADGET_DIR/configs/$CFG" || echo "Warning: Failed to remove config $CFG"
+        done
+    fi
 
-    # Remove strings
-    rm -rf "$GADGET_DIR/strings/"*
+    # Remove all strings
+    if [ -d "$GADGET_DIR/strings/" ]; then
+        rm -rf "$GADGET_DIR/strings/"* || echo "Warning: Failed to remove strings"
+    fi
 
     # Finally, remove the gadget directory
     rm -rf "$GADGET_DIR" || error_exit "Failed to remove gadget directory."
 fi
 
 # Create gadget directory
-mkdir -p "$GADGET_DIR"
+mkdir -p "$GADGET_DIR" || error_exit "Failed to create gadget directory."
 
 # USB Descriptors
-# Remove '0x' from VID and PID for idVendor and idProduct
+# Ensure VID and PID do NOT have the '0x' prefix
 VID="abcd"                        # Vendor ID from working USB (without 0x)
 PID="1234"                        # Product ID from working USB (without 0x)
 bcdDevice="0x0100"                # Device version (1.00)
@@ -149,18 +163,18 @@ echo "$bcdUSB" > "$GADGET_DIR/bcdUSB"
 echo "$bcdDevice" > "$GADGET_DIR/bcdDevice"
 
 # Create English strings
-mkdir -p "$GADGET_DIR/strings/0x409"
+mkdir -p "$GADGET_DIR/strings/0x409" || error_exit "Failed to create strings directory."
 echo "$SERIALNUMBER" > "$GADGET_DIR/strings/0x409/serialnumber"
 echo "$MANUFACTURER" > "$GADGET_DIR/strings/0x409/manufacturer"
 echo "$PRODUCT" > "$GADGET_DIR/strings/0x409/product"
 
 # Create configuration
-mkdir -p "$GADGET_DIR/configs/c.1/strings/0x409"
+mkdir -p "$GADGET_DIR/configs/c.1/strings/0x409" || error_exit "Failed to create config strings directory."
 echo "Config 1: Mass Storage" > "$GADGET_DIR/configs/c.1/strings/0x409/configuration"
-mkdir -p "$GADGET_DIR/configs/c.1"
+mkdir -p "$GADGET_DIR/configs/c.1" || error_exit "Failed to create config directory."
 
 # Add mass storage function
-mkdir -p "$GADGET_DIR/functions/mass_storage.0"
+mkdir -p "$GADGET_DIR/functions/mass_storage.0" || error_exit "Failed to create mass_storage.0 function."
 echo "$USB_IMAGE" > "$GADGET_DIR/functions/mass_storage.0/lun.0/file"
 echo 0 > "$GADGET_DIR/functions/mass_storage.0/lun.0/removable"
 echo 1 > "$GADGET_DIR/functions/mass_storage.0/lun.0/nofua"
@@ -221,24 +235,41 @@ if [ -d "$GADGET_DIR" ]; then
         echo "" > "$GADGET_DIR/UDC"
     fi
 
-    # Remove all functions
-    FUNCTIONS=$(ls "$GADGET_DIR/functions/")
-    for FUNC in $FUNCTIONS; do
-        rm -rf "$GADGET_DIR/functions/$FUNC"
+    # Wait until the UDC is unbound
+    UDC_BOUND=$(cat "$GADGET_DIR/UDC" 2>/dev/null || echo "")
+    while [ -n "$UDC_BOUND" ]; do
+        echo "Waiting for UDC to unbind..."
+        sleep 1
+        UDC_BOUND=$(cat "$GADGET_DIR/UDC" 2>/dev/null || echo "")
     done
+
+    # Remove all functions
+    if [ -d "$GADGET_DIR/functions/" ]; then
+        FUNCTIONS=$(ls "$GADGET_DIR/functions/")
+        for FUNC in $FUNCTIONS; do
+            rm -rf "$GADGET_DIR/functions/$FUNC" || echo "Warning: Failed to remove function $FUNC"
+        done
+    fi
 
     # Remove all configurations
-    CONFIGS=$(ls "$GADGET_DIR/configs/")
-    for CFG in $CONFIGS; do
-        rm -rf "$GADGET_DIR/configs/$CFG"
-    done
+    if [ -d "$GADGET_DIR/configs/" ]; then
+        CONFIGS=$(ls "$GADGET_DIR/configs/")
+        for CFG in $CONFIGS; do
+            rm -rf "$GADGET_DIR/configs/$CFG" || echo "Warning: Failed to remove config $CFG"
+        done
+    fi
 
-    # Remove strings
-    rm -rf "$GADGET_DIR/strings/"*
+    # Remove all strings
+    if [ -d "$GADGET_DIR/strings/" ]; then
+        rm -rf "$GADGET_DIR/strings/"* || echo "Warning: Failed to remove strings"
+    fi
+
+    # Finally, remove the gadget directory
+    rm -rf "$GADGET_DIR" || exit 1
 fi
 
 # Create gadget directory if not exists
-mkdir -p "$GADGET_DIR"
+mkdir -p "$GADGET_DIR" || exit 1
 
 # Set Vendor and Product ID
 echo "$VID" > "$GADGET_DIR/idVendor"
@@ -249,18 +280,18 @@ echo "$bcdUSB" > "$GADGET_DIR/bcdUSB"
 echo "$bcdDevice" > "$GADGET_DIR/bcdDevice"
 
 # Create English strings
-mkdir -p "$GADGET_DIR/strings/0x409"
+mkdir -p "$GADGET_DIR/strings/0x409" || exit 1
 echo "$SERIALNUMBER" > "$GADGET_DIR/strings/0x409/serialnumber"
 echo "$MANUFACTURER" > "$GADGET_DIR/strings/0x409/manufacturer"
 echo "$PRODUCT" > "$GADGET_DIR/strings/0x409/product"
 
 # Create configuration
-mkdir -p "$GADGET_DIR/configs/c.1/strings/0x409"
+mkdir -p "$GADGET_DIR/configs/c.1/strings/0x409" || exit 1
 echo "Config 1: Mass Storage" > "$GADGET_DIR/configs/c.1/strings/0x409/configuration"
-mkdir -p "$GADGET_DIR/configs/c.1"
+mkdir -p "$GADGET_DIR/configs/c.1" || exit 1
 
 # Add mass storage function
-mkdir -p "$GADGET_DIR/functions/mass_storage.0"
+mkdir -p "$GADGET_DIR/functions/mass_storage.0" || exit 1
 echo "$USB_IMAGE" > "$GADGET_DIR/functions/mass_storage.0/lun.0/file"
 echo 0 > "$GADGET_DIR/functions/mass_storage.0/lun.0/removable"
 echo 1 > "$GADGET_DIR/functions/mass_storage.0/lun.0/nofua"
@@ -269,7 +300,7 @@ echo 1 > "$GADGET_DIR/functions/mass_storage.0/lun.0/nofua"
 ln -s "$GADGET_DIR/functions/mass_storage.0" "$GADGET_DIR/configs/c.1/" || exit 1
 
 # Enable the gadget
-UDC=$(ls /sys/class/udc | head -n1)
+UDC=$(ls /sys/class/udc | head -n1) || exit 1
 echo "$UDC" > "$GADGET_DIR/UDC"
 EOF
 
