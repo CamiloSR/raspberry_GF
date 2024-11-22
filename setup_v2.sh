@@ -62,7 +62,7 @@ fi
 
 # Ensure 'dwc2' and 'g_mass_storage' modules are in /etc/modules
 MODULES_FILE="/etc/modules"
-for module in dwc2 g_mass_storage; do
+for module in dwc2 libcomposite; do
     if ! grep -q "^$module$" "$MODULES_FILE"; then
         echo "Adding $module to $MODULES_FILE..."
         echo "$module" >> "$MODULES_FILE" || error_exit "Failed to add $module to $MODULES_FILE."
