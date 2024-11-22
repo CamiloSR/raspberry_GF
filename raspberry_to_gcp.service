@@ -1,0 +1,22 @@
+[Unit]
+Description=Raspberry Pi to GCP Python Script
+After=network.target
+
+[Service]
+# Specify the user to run the service
+User=pi
+Group=plugdev
+# Set the working directory
+WorkingDirectory=/home/pi/
+# Add a 11-second delay before starting
+ExecStartPre=/bin/sleep 11
+# Use the virtual environment's Python interpreter to run the script
+ExecStart=/home/pi/venv/bin/python3 /home/pi/raspberry_to_gcp.py
+
+# Restart the service automatically if it crashes
+Restart=always
+# Restart service after 10 seconds if it crashes
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
