@@ -87,7 +87,7 @@ fi
 echo "Creating USB image file $USB_IMAGE_FILE..."
 dd if=/dev/zero of="$USB_IMAGE_FILE" bs=1M count="$USB_SIZE_MB" status=progress || error_exit "Failed to create USB image file."
 
-chmod 666 "$USB_IMAGE"
+sudo chmod 666 "$USB_IMAGE_FILE"
 
 # Remove g_mass_storage and Load libcomposite
 modprobe -r g_mass_storage
