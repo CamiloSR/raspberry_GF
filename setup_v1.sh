@@ -104,6 +104,18 @@ echo "Loading g_mass_storage module with $USB_IMAGE_FILE..."
 modprobe -r g_mass_storage || true
 modprobe g_mass_storage || error_exit "Failed to load g_mass_storage module."
 
+# Define the path to the mtools configuration file
+CONFIG_FILE="/home/pi/.mtoolsrc"
+
+# Ensure the configuration file exists
+touch "$CONFIG_FILE"
+
+# Add lines if they are not already present
+grep -qxF 'drive p: file="/piusb.bin" exclusive' "$CONFIG_FILE" || echo 'drive p: file="/piusb.bin" exclusive' >> "$CONFIG_FILE"
+grep -qxF 'mtools_skip_check=1' "$CONFIG_FILE" || echo 'mtools_skip_check=1' >> "$CONFIG_FILE"
+
+echo "mtools configuration updated in $CONFIG_FILE."
+
 # Final message and reboot
 echo ""
 echo "USB mass storage setup is complete."
