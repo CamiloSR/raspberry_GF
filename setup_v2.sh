@@ -60,7 +60,7 @@ if ! grep -q "^dtoverlay=dwc2,dr_mode=peripheral" "$CONFIG_TXT"; then
     echo "dtoverlay=dwc2,dr_mode=peripheral" >> "$CONFIG_TXT" || error_exit "Failed to modify $CONFIG_TXT."
 fi
 
-# Ensure 'dwc2' and 'g_mass_storage' modules are in /etc/modules
+# Ensure 'dwc2' and 'libcomposite' modules are in /etc/modules
 MODULES_FILE="/etc/modules"
 for module in dwc2 libcomposite; do
     if ! grep -q "^$module$" "$MODULES_FILE"; then
@@ -70,11 +70,6 @@ for module in dwc2 libcomposite; do
         echo "$module is already present in $MODULES_FILE."
     fi
 done
-
-# Create modprobe configuration for g_mass_storage
-G_MASS_STORAGE_CONF="/etc/modprobe.d/g_mass_storage.conf"
-echo "Configuring g_mass_storage module parameters..."
-echo "options g_mass_storage file=$USB_IMAGE_FILE removable=1 ro=0 stall=0" > "$G_MASS_STORAGE_CONF" || error_exit "Failed to create $G_MASS_STORAGE_CONF."
 
 # Reload systemd and modprobe configurations
 echo "Reloading configurations..."
