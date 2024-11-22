@@ -12,22 +12,22 @@ from collections import deque
 
 # Path to the log file.
 # Note: Only the last assignment will take effect.
-LOG_FILE = "p:/LOGGER.GAM"                 # mtools path
+LOG_FILE = "p:/LOGGER.GAM"                     # mtools path
 
 # Machine and Location Information
-# MACHINE_NAME = "CDL Line 1 [Gamma]"        # Name of the machine
-# CURRENT_LOCATION = "Coteau-du-Lac"          # Current location name
-# LOCATION_INFO = "POINT(-74.1771 45.3053)"   # Geographical coordinates of the location
+# MACHINE_NAME = "CDL Line 1 [Gamma]"          # Name of the machine
+# CURRENT_LOCATION = "Coteau-du-Lac"           # Current location name
+# LOCATION_INFO = "POINT(-74.1771 45.3053)"    # Geographical coordinates of the location
 
-MACHINE_NAME = "Calmar Line 1 [Gamma]"    # Name of the machine
-CURRENT_LOCATION = "Calmar"          # Current location name
+MACHINE_NAME = "Calmar Line 1 [Gamma]"         # Name of the machine
+CURRENT_LOCATION = "Calmar"                    # Current location name
 LOCATION_INFO = "POINT(-113.8070872 53.2569529)"   # Geographical coordinates of the location for Calmar
 
 # Google Cloud Configuration
-SERVICE_ACCOUNT_FILE = "gf-iot-csr.json"    # Path to the service account JSON file
-PROJECT_ID = "gf-canada-iot"                 # Google Cloud project ID
-DATASET_ID = "GF_CAN_Machines"               # BigQuery dataset ID
-TABLE_ID = "gamma-machines-pi"                  # BigQuery table ID
+SERVICE_ACCOUNT_FILE = "gf-iot-csr.json"       # Path to the service account JSON file
+PROJECT_ID = "gf-canada-iot"                   # Google Cloud project ID
+DATASET_ID = "GF_CAN_Machines"                 # BigQuery dataset ID
+TABLE_ID = "gamma-machines-pi"                 # BigQuery table ID
 FIRESTORE_COLLECTION = "gamma_machines_status" # Firestore collection name
 
 # ============================
