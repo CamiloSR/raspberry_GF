@@ -87,6 +87,12 @@ fi
 echo "Creating USB image file $USB_IMAGE_FILE..."
 dd if=/dev/zero of="$USB_IMAGE_FILE" bs=1M count="$USB_SIZE_MB" status=progress || error_exit "Failed to create USB image file."
 
+chmod 666 "$USB_IMAGE"
+
+# Remove g_mass_storage and Load libcomposite
+modprobe -r g_mass_storage
+modprobe libcomposite
+
 # Partition the USB image with MBR and a single FAT32 partition
 echo "Partitioning USB image with MBR and a single FAT32 partition..."
 echo -e "o\nn\np\n1\n\n\nw" | fdisk "$USB_IMAGE_FILE" || error_exit "Failed to partition USB image."
@@ -116,6 +122,7 @@ cat << 'EOF' > "$GADGET_SCRIPT"
 # USB Gadget Configuration Script
 # /usr/bin/usb-gadget.sh
 
+# Remove g_mass_storage and Load libcomposite
 modprobe -r g_mass_storage
 modprobe libcomposite
 
