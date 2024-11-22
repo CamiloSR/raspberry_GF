@@ -3,6 +3,9 @@
 # USB Gadget Configuration Script
 # /usr/bin/usb-gadget.sh
 
+modprobe -r g_mass_storage
+modprobe libcomposite
+
 # Variables (Replace with actual values)
 VID="0xabcd"                           # Vendor ID from working USB
 PID="0x1234"                           # Product ID from working USB
