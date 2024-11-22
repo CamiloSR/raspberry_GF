@@ -1,0 +1,15 @@
+[Unit]
+Description=USB Gadget Service
+After=network.target systemd-modules-load.service
+Requires=systemd-modules-load.service
+ConditionPathExists=/usr/bin/usb-gadget.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/usb-gadget.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
