@@ -27,7 +27,7 @@ LOCATION_INFO = "POINT(-113.8070872 53.2569529)"   # Geographical coordinates of
 SERVICE_ACCOUNT_FILE = "gf-iot-csr.json"    # Path to the service account JSON file
 PROJECT_ID = "gf-canada-iot"                 # Google Cloud project ID
 DATASET_ID = "GF_CAN_Machines"               # BigQuery dataset ID
-TABLE_ID = "gamma-machines"                  # BigQuery table ID
+TABLE_ID = "gamma-machines-pi"                  # BigQuery table ID
 FIRESTORE_COLLECTION = "gamma_machines_status" # Firestore collection name
 
 # ============================
