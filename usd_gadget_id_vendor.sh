@@ -12,9 +12,9 @@ PID="0x1234"                           # Product ID from working USB
 bcdDevice="0x0100"                     # Device version (1.00)
 bcdUSB="0x0200"                        # USB version (2.0)
 MANUFACTURER="General"                 # Manufacturer string
-PRODUCT="General UDisk USB Device"      # Product string
-SERIALNUMBER="010203040506"                       # Serial number from working USB
-USB_IMAGE="/piusb.bin"                # Path to your USB image
+PRODUCT="General UDisk USB Device"     # Product string
+SERIALNUMBER="6&14FAAF72&0&_&0"        # Serial number from working USB
+USB_IMAGE="/piusb.bin"                 # Path to your USB image
 
 GADGET_DIR="/sys/kernel/config/usb_gadget/g1"
 
@@ -55,11 +55,12 @@ sudo mkdir -p configs/c.1
 # Add mass storage function
 sudo mkdir -p functions/mass_storage.0
 echo "$USB_IMAGE" > functions/mass_storage.0/lun.0/file
-echo 0 > functions/mass_storage.0/lun.0/removable
+echo 1 > functions/mass_storage.0/lun.0/removable
 echo 1 > functions/mass_storage.0/lun.0/nofua
 
 # Link function to config
 sudo ln -s functions/mass_storage.0 configs/c.1/
+
 
 # Enable the gadget
 UDC=$(ls /sys/class/udc | head -n1)
