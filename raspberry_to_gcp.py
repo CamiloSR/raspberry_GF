@@ -12,14 +12,16 @@ from collections import deque
 
 # Path to the log file.
 # Note: Only the last assignment will take effect.
-# LOG_FILE = "LOGGER.GAM"                  # Initial log file path
-# LOG_FILE = "/mnt/p/LOGGER.GAM"           # Mounted log file path
 LOG_FILE = "p:/LOGGER.GAM"                 # mtools path
 
 # Machine and Location Information
-MACHINE_NAME = "CDL Line 1 [Gamma]"        # Name of the machine
-CURRENT_LOCATION = "Coteau-du-Lac"          # Current location name
-LOCATION_INFO = "POINT(-74.1771 45.3053)"   # Geographical coordinates of the location
+# MACHINE_NAME = "CDL Line 1 [Gamma]"        # Name of the machine
+# CURRENT_LOCATION = "Coteau-du-Lac"          # Current location name
+# LOCATION_INFO = "POINT(-74.1771 45.3053)"   # Geographical coordinates of the location
+
+MACHINE_NAME = "Calmar Line 1 [Gamma]"    # Name of the machine
+CURRENT_LOCATION = "Calmar"          # Current location name
+LOCATION_INFO = "POINT(-113.8070872 53.2569529)"   # Geographical coordinates of the location for Calmar
 
 # Google Cloud Configuration
 SERVICE_ACCOUNT_FILE = "gf-iot-csr.json"    # Path to the service account JSON file
@@ -103,14 +105,16 @@ def parse_log_line(log_line):
         return None
     try:
         # Extract and parse the original timestamp
-        original_timestamp = values[0]
+        # original_timestamp = values[0]
         local_tz = ZoneInfo(TIMEZONES.get(CURRENT_LOCATION, "UTC"))
+        now = datetime.now(local_tz)
         # Parse the original timestamp with timezone
-        dt = datetime.strptime(original_timestamp, "%d-%m-%Y %H:%M:%S").replace(tzinfo=local_tz)
+        # dt = datetime.strptime(original_timestamp, "%d-%m-%Y %H:%M:%S").replace(tzinfo=local_tz)
         
         # Convert timestamp to UTC
-        dt_utc = dt.astimezone(ZoneInfo("UTC"))
-        formatted_timestamp = dt_utc.isoformat()
+        # dt_utc = dt.astimezone(ZoneInfo("UTC"))
+        now_utc = now.astimezone(ZoneInfo("UTC"))
+        formatted_timestamp = now_utc.isoformat()
         
         # Create and return a dictionary with all required fields
         return {
