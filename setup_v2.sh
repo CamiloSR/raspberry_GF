@@ -27,12 +27,37 @@ apt update || error_exit "apt update failed."
 echo "Upgrading packages..."
 apt full-upgrade -y || error_exit "apt full-upgrade failed."
 
-# Install mtools, dos2unix, and python3-pip
-echo "Installing mtools, dos2unix, and python3-pip..."
-apt install mtools dos2unix python3-pip -y || error_exit "Package installation failed."
+# Install mtools and dos2unix
+echo "Installing mtools and dos2unix..."
+apt install mtools dos2unix -y || error_exit "Package installation failed."
 
+# ──────────────────────────────────────────────────────────────
+# Disable Wi-Fi Power Management
+# ──────────────────────────────────────────────────────────────
+echo "Disabling Wi-Fi power management..."
+DHCPCD_CONF="/etc/dhcpcd.conf"
+# Only append if these lines are not already present
+if ! grep -qx "interface wlan0" "$DHCPCD_CONF"; then
+    {
+        echo ""
+        echo "# Disable Wi-Fi power management"
+        echo "interface wlan0"
+        echo "nohook wpa_supplicant"
+    } >> "$DHCPCD_CONF"
+    echo "Wi-Fi power management lines appended to $DHCPCD_CONF."
+else
+    echo "It appears Wi-Fi power management is already disabled (or partially configured). Skipping..."
+fi
+
+# Restart dhcpcd to apply changes
+systemctl restart dhcpcd || error_exit "Failed to restart dhcpcd."
+echo "Wi-Fi power management has been disabled."
 
 echo "All operations completed successfully."
+
+# ──────────────────────────────────────────────────────────────
+# USB MASS STORAGE SETUP
+# ──────────────────────────────────────────────────────────────
 
 # Set your desired USB image label (FAT32 label limit: 11 characters, uppercase, no spaces)
 USB_IMAGE_LABEL="PIUSB"
@@ -46,7 +71,7 @@ fi
 USB_IMAGE_FILE="/piusb.bin"
 
 # Set the size as appropriate (in megabytes)
-USB_SIZE_MB=256  # Adjust this value as needed
+USB_SIZE_MB=2048  # 2GB
 
 echo "USB Image Label: $USB_IMAGE_LABEL"
 echo "USB Image Size: ${USB_SIZE_MB}MB"
