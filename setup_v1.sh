@@ -45,7 +45,7 @@ fi
 USB_IMAGE_FILE="/piusb.bin"
 
 # Set the size as appropriate (in megabytes)
-USB_SIZE_MB=256  # Adjust this value as needed
+USB_SIZE_MB=2048  # 2GB
 
 echo "USB Image Label: $USB_IMAGE_LABEL"
 echo "USB Image Size: ${USB_SIZE_MB}MB"
