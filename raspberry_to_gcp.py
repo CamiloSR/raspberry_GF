@@ -189,9 +189,28 @@ def update_firestore(data, previous_status):
     except Exception as e:
         # Handle exceptions during the Firestore update
         print(f"Firestore update error: {e}")
+        
+def get_latest_sent():
+    query = f"""
+        SELECT * FROM `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`
+        WHERE `Location Name` = @current_location AND `Machine` = @machine_name
+        ORDER BY Timestamp DESC
+        LIMIT 1
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("current_location", "STRING", CURRENT_LOCATION),
+            bigquery.ScalarQueryParameter("machine_name", "STRING", MACHINE_NAME)
+        ]
+    )
+    query_job = bigquery_client.query(query, job_config=job_config)
+    results = query_job.result()
+    for row in results:
+        return dict(row)
+    return None
 
-# Eventually I need to set this based on last data available for this machine and this location in Big Query.
-last_sent = None  # Initialize last_sent variable
+last_sent = get_latest_sent()
+print(last_sent)
 
 def continuously_monitor(interval=1):
     """
