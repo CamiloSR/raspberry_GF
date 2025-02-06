@@ -12,23 +12,35 @@ from collections import deque
 
 # Path to the log file.
 # Note: Only the last assignment will take effect.
-LOG_FILE = "p:/LOGGER.GAM"                     # mtools path
+LOG_FILE = "p:/LOGGER.GAM"                 # mtools path
 
 # Machine and Location Information
-# MACHINE_NAME = "CDL Line 1 [Gamma]"          # Name of the machine
-# CURRENT_LOCATION = "Coteau-du-Lac"           # Current location name
-# LOCATION_INFO = "POINT(-74.1771 45.3053)"    # Geographical coordinates of the location
+# MACHINE_NAME = "CDL Line 1 [Gamma]"        # Name of the machine
+# CURRENT_LOCATION = "Coteau-du-Lac"          # Current location name
+# LOCATION_INFO = "POINT(-74.1771 45.3053)"   # Geographical coordinates of the location
 
-MACHINE_NAME = "Calmar Line 1 [Gamma]"         # Name of the machine
-CURRENT_LOCATION = "Calmar"                    # Current location name
+MACHINE_NAME = "Calmar Line 1 [Gamma]"    # Name of the machine
+CURRENT_LOCATION = "Calmar"          # Current location name
 LOCATION_INFO = "POINT(-113.8070872 53.2569529)"   # Geographical coordinates of the location for Calmar
 
 # Google Cloud Configuration
-SERVICE_ACCOUNT_FILE = "gf-iot-csr.json"       # Path to the service account JSON file
-PROJECT_ID = "gf-canada-iot"                   # Google Cloud project ID
-DATASET_ID = "GF_CAN_Machines"                 # BigQuery dataset ID
-TABLE_ID = "gamma-machines-pi"                 # BigQuery table ID
+SERVICE_ACCOUNT_FILE = "gf-iot-csr.json"    # Path to the service account JSON file
+PROJECT_ID = "gf-canada-iot"                 # Google Cloud project ID
+DATASET_ID = "GF_CAN_Machines"               # BigQuery dataset ID
+TABLE_ID = "gamma-machines-pi"                  # BigQuery table ID
+TIMELINE_TABLE_ID = "gamma-machines-timeline"     # BigQuery table ID
 FIRESTORE_COLLECTION = "gamma_machines_status" # Firestore collection name
+
+# ============================
+#       Timezone Mapping
+# ============================
+
+# Dictionary mapping locations to their respective timezones
+TIMEZONES = {
+    "Coteau-du-Lac": "America/Toronto",
+    "Calmar": "America/Edmonton"
+}
+
 
 # ============================
 #     Initialize Clients
@@ -44,16 +56,6 @@ bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
 firestore_client = firestore.Client(project=PROJECT_ID, credentials=credentials)
 
 # ============================
-#       Timezone Mapping
-# ============================
-
-# Dictionary mapping locations to their respective timezones
-TIMEZONES = {
-    "Coteau-du-Lac": "America/Toronto",
-    "Calmar": "America/Edmonton"
-}
-
-# ============================
 #        Function Definitions
 # ============================
 
@@ -67,7 +69,7 @@ def get_log_lines():
     try:
         # Execute the mtype command to read LOGGER.GAM
         result = subprocess.run(
-            ["mtype", "p:/LOGGER.GAM"],
+            ["mtype", LOG_FILE],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -105,14 +107,12 @@ def parse_log_line(log_line):
         return None
     try:
         # Extract and parse the original timestamp
-        # original_timestamp = values[0]
         local_tz = ZoneInfo(TIMEZONES.get(CURRENT_LOCATION, "UTC"))
-        now = datetime.now(local_tz)
+        
         # Parse the original timestamp with timezone
-        # dt = datetime.strptime(original_timestamp, "%d-%m-%Y %H:%M:%S").replace(tzinfo=local_tz)
+        now = datetime.now(local_tz)
         
         # Convert timestamp to UTC
-        # dt_utc = dt.astimezone(ZoneInfo("UTC"))
         now_utc = now.astimezone(ZoneInfo("UTC"))
         formatted_timestamp = now_utc.isoformat()
         
@@ -163,7 +163,7 @@ def send_to_bigquery(data):
         # Handle exceptions during the insert operation
         print(f"BigQuery insert exception: {e}")
 
-def update_firestore(data):
+def update_firestore(data, previous_status):
     """
     Updates a Firestore document with the latest status and timestamp.
 
@@ -174,52 +174,23 @@ def update_firestore(data):
     doc_ref = firestore_client.collection(FIRESTORE_COLLECTION).document(MACHINE_NAME)
     try:
         # Update the document with location, status, and timestamp
-        doc_ref.set({
-            "Location": data["Location Name"],
-            "Status": data["Status"],
-            "Timestamp": datetime.fromisoformat(data["Timestamp"])
-        })
+        if previous_status != data["Status"]:
+            doc_ref.set({
+                "Location": data["Location Name"],
+                "Status": data["Status"],
+                "Timestamp": datetime.fromisoformat(data["Timestamp"]),
+                "PI Timestamp" : datetime.fromisoformat(data["Timestamp"])
+            })
+        if previous_status == data["Status"]:
+            doc_ref.update({
+                "PI Timestamp" : datetime.fromisoformat(data["Timestamp"])
+            })
     except Exception as e:
         # Handle exceptions during the Firestore update
         print(f"Firestore update error: {e}")
 
+# Eventually I need to set this based on last data available for this machine and this location in Big Query.
 last_sent = None  # Initialize last_sent variable
-
-def process_line(last_line, new_line):
-    """
-    Processes the latest line from the log file by determining the machine's status
-    and sending the data to BigQuery and Firestore.
-
-    Parameters:
-        last_line (str): The third last line from the log file.
-        new_line (str): The most recent line from the log file.
-    """
-    global last_sent
-    try:
-        # Extract the second last value from the new line and the third last line
-        last_digit = int(new_line.strip().split(";")[-2])
-        third_last_digit = int(last_line.strip().split(";")[-2])
-        
-        # Determine the status based on the digits
-        status = "Running" if last_digit != third_last_digit and last_digit != 0 else "Stopped"
-        
-        # Append the status to the new line
-        new_line_with_status = f"{new_line.strip()};{status}"
-        
-        if new_line_with_status == last_sent:
-            return  # Do nothing if same as last sent
-        
-        # Parse the modified log line
-        data = parse_log_line(new_line_with_status)
-        
-        if data:
-            # Send the parsed data to BigQuery and update Firestore
-            send_to_bigquery(data)
-            update_firestore(data)
-            last_sent = new_line_with_status  # Update last_sent
-    except (ValueError, IndexError) as e:
-        # Handle any errors during line processing
-        print(f"Line processing error: {e}")
 
 def continuously_monitor(interval=1):
     """
@@ -236,7 +207,7 @@ def continuously_monitor(interval=1):
         try:
             # Retrieve the current lines from LOGGER.GAM using mtype
             lines = get_log_lines()
-            
+
             # Clear the deque and append the latest lines
             last_three.clear()
             for line in lines:
@@ -244,9 +215,37 @@ def continuously_monitor(interval=1):
             
             # If there are at least three lines, process the last two
             if len(last_three) == 3:
-                third_last, second_last, last = last_three
-                if last != last_sent:
-                    process_line(third_last, last)
+                third_last, _, last = last_three
+
+                # Process The information from the last lines otherwise
+                try:
+                    # Extract the second last value from the new line and the third last line
+                    last_digit = int(last.strip().split(";")[-2])
+                    third_last_digit = int(third_last.strip().split(";")[-2])
+                    
+                    # Determine the status based on the digits
+                    status = "Running" if last_digit != third_last_digit and last_digit != 0 else "Stopped"
+                    
+                    # Append the status to the new line
+                    last_with_status = f"{last.strip()};{status}"
+                    
+                    previous_status = last_sent.get('Status') if last_sent is not None else None
+                    
+                    # Parse the modified log line
+                    data = parse_log_line(last_with_status)
+                    
+                    if data:
+                        # Send the parsed data to BigQuery and update Firestore
+                        update_firestore(data, previous_status)
+                        if last_with_status == last_sent:
+                            continue  
+                        send_to_bigquery(data)
+                        
+                        last_sent = last_with_status  # Update last_sent
+                except (ValueError, IndexError) as e:
+                    # Handle any errors during line processing
+                    print(f"Line processing error: {e}")  
+                
         except Exception as e:
             # Handle any unexpected errors during monitoring
             print(f"Monitoring error: {e}")
