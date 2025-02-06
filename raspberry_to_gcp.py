@@ -237,11 +237,11 @@ def continuously_monitor(interval=1):
                     if data:
                         # Send the parsed data to BigQuery and update Firestore
                         update_firestore(data, previous_status)
-                        if last_with_status == last_sent:
+                        if data == last_sent:
                             continue  
                         send_to_bigquery(data)
                         
-                        last_sent = last_with_status  # Update last_sent
+                        last_sent = data  # Update last_sent
                 except (ValueError, IndexError) as e:
                     # Handle any errors during line processing
                     print(f"Line processing error: {e}")  
