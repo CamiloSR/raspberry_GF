@@ -174,16 +174,17 @@ def update_firestore(data, previous_status):
     doc_ref = firestore_client.collection(FIRESTORE_COLLECTION).document(MACHINE_NAME)
     try:
         # Update the document with location, status, and timestamp
+        ts = datetime.fromisoformat(data["Timestamp"])
         if previous_status != data["Status"]:
             doc_ref.set({
                 "Location": data["Location Name"],
                 "Status": data["Status"],
-                "Timestamp": datetime.fromisoformat(data["Timestamp"]),
-                "PI Timestamp" : datetime.fromisoformat(data["Timestamp"])
+                "Timestamp": ts,
+                "PI Timestamp" : ts
             })
         if previous_status == data["Status"]:
             doc_ref.update({
-                "PI Timestamp" : datetime.fromisoformat(data["Timestamp"])
+                "PI Timestamp" : ts
             })
     except Exception as e:
         # Handle exceptions during the Firestore update
