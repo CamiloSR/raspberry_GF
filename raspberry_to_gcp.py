@@ -210,7 +210,7 @@ def get_latest_sent():
     return None
 
 last_sent = get_latest_sent()
-print(last_sent)
+# print(last_sent)
 
 def continuously_monitor(interval=1):
     """
