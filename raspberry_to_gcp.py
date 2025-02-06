@@ -180,11 +180,11 @@ def update_firestore(data, previous_status):
                 "Location": data["Location Name"],
                 "Status": data["Status"],
                 "Timestamp": ts,
-                "PI Timestamp" : ts
+                "PI_Timestamp" : ts
             })
         if previous_status == data["Status"]:
             doc_ref.update({
-                "PI Timestamp" : ts
+                "PI_Timestamp" : ts
             })
     except Exception as e:
         # Handle exceptions during the Firestore update
