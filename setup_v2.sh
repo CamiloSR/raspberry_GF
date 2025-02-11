@@ -36,22 +36,27 @@ apt install mtools dos2unix -y || error_exit "Package installation failed."
 # ──────────────────────────────────────────────────────────────
 echo "Disabling Wi-Fi power management..."
 DHCPCD_CONF="/etc/dhcpcd.conf"
-# Only append if these lines are not already present
-if ! grep -qx "interface wlan0" "$DHCPCD_CONF"; then
-    {
-        echo ""
-        echo "# Disable Wi-Fi power management"
-        echo "interface wlan0"
-        echo "nohook wpa_supplicant"
-    } >> "$DHCPCD_CONF"
-    echo "Wi-Fi power management lines appended to $DHCPCD_CONF."
+if [ -f "$DHCPCD_CONF" ]; then
+    if ! grep -qx "interface wlan0" "$DHCPCD_CONF"; then
+        {
+            echo ""
+            echo "# Disable Wi-Fi power management"
+            echo "interface wlan0"
+            echo "nohook wpa_supplicant"
+        } >> "$DHCPCD_CONF"
+        echo "Wi-Fi power management lines appended to $DHCPCD_CONF."
+    else
+        echo "Wi-Fi power management already configured. Skipping..."
+    fi
+    if systemctl list-units --type=service | grep -q "dhcpcd.service"; then
+         systemctl restart dhcpcd || error_exit "Failed to restart dhcpcd."
+         echo "Wi-Fi power management has been disabled."
+    else
+         echo "dhcpcd service not found, skipping restart."
+    fi
 else
-    echo "It appears Wi-Fi power management is already disabled (or partially configured). Skipping..."
+    echo "File $DHCPCD_CONF not found, skipping Wi-Fi power management configuration."
 fi
-
-# Restart dhcpcd to apply changes
-systemctl restart dhcpcd || error_exit "Failed to restart dhcpcd."
-echo "Wi-Fi power management has been disabled."
 
 # ──────────────────────────────────────────────────────────────
 # Disable USB Power Output (VC_USB)
@@ -62,7 +67,7 @@ if [ -f "$USB_POWER_FILE" ]; then
     echo '1' | tee "$USB_POWER_FILE" || error_exit "Failed to disable USB power output."
     echo "USB power output disabled."
 else
-    echo "USB power output control file not found. Skipping USB power disable."
+    echo "USB power control file not found, skipping USB power disable."
 fi
 
 echo "All operations completed successfully."
@@ -83,7 +88,7 @@ fi
 USB_IMAGE_FILE="/piusb.bin"
 
 # Set the size as appropriate (in megabytes)
-USB_SIZE_MB=1024  # 1GB
+USB_SIZE_MB=2048  # 2GB
 
 echo "USB Image Label: $USB_IMAGE_LABEL"
 echo "USB Image Size: ${USB_SIZE_MB}MB"
