@@ -53,6 +53,18 @@ fi
 systemctl restart dhcpcd || error_exit "Failed to restart dhcpcd."
 echo "Wi-Fi power management has been disabled."
 
+# ──────────────────────────────────────────────────────────────
+# Disable USB Power Output (VC_USB)
+# ──────────────────────────────────────────────────────────────
+echo "Disabling USB power output..."
+USB_POWER_FILE="/sys/devices/platform/soc/20980000.usb/buspower"
+if [ -f "$USB_POWER_FILE" ]; then
+    echo '1' | tee "$USB_POWER_FILE" || error_exit "Failed to disable USB power output."
+    echo "USB power output disabled."
+else
+    echo "USB power output control file not found. Skipping USB power disable."
+fi
+
 echo "All operations completed successfully."
 
 # ──────────────────────────────────────────────────────────────
@@ -71,7 +83,7 @@ fi
 USB_IMAGE_FILE="/piusb.bin"
 
 # Set the size as appropriate (in megabytes)
-USB_SIZE_MB=2048  # 2GB
+USB_SIZE_MB=1024  # 1GB
 
 echo "USB Image Label: $USB_IMAGE_LABEL"
 echo "USB Image Size: ${USB_SIZE_MB}MB"
