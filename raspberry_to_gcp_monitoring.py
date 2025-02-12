@@ -31,35 +31,34 @@ firestore_client = firestore.Client(project=PROJECT_ID, credentials=credentials)
 # ============================
 
 def generate_timestamp():
-    local_tz = ZoneInfo("UTC")
-    now_utc = datetime.now(local_tz)
-    return now_utc.isoformat()
+    # Format timestamp as "YYYY-MM-DD HH:MM:SS.ffffff UTC" for BigQuery TIMESTAMP
+    return datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d %H:%M:%S.%f UTC")
 
 def monitor_and_update_firestore_bigquery(interval=2):
-    previous_status = None
     table_id = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
     doc_ref = firestore_client.collection(FIRESTORE_COLLECTION).document(MACHINE_NAME)
-    timestamp = generate_timestamp()
+    
     while True:
         try:
+            timestamp = generate_timestamp()
             data = {
-                "Timestamp": timestamp,
+                "Timestamp": timestamp,  # TIMESTAMP field expected by BQ (as string)
                 "Machine": MACHINE_NAME,
             }
 
             try:
-                doc_ref.update({"PI_Timestamp": timestamp})
+                ts = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S.%f UTC")
+                doc_ref.update({"PI_Timestamp": ts})
             except Exception as e:
                 print(f"Firestore update error: {e}")
 
             try:
-                errors = bigquery_client.insert_rows_json(table_id, [data])
+                # Specify the location since the table is in the US region
+                errors = bigquery_client.insert_rows_json(table_id, [data], location="US")
                 if errors:
                     print(f"BigQuery errors: {errors}")
             except Exception as e:
                 print(f"BigQuery insert exception: {e}")
-
-            previous_status = data["Status"]
         except Exception as e:
             print(f"Monitoring error: {e}")
 
