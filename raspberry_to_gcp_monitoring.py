@@ -8,7 +8,7 @@ from google.oauth2 import service_account
 #         Configuration
 # ============================
 
-MACHINE_NAME = "UIP 1 - Coteau [G50-H]"
+MACHINE_NAME = "UIP 2 - Coteau [G50-H]"
 CURRENT_LOCATION = "Coteau-du-Lac"
 LOCATION_INFO = "POINT(-74.1771 45.3053)"
 
@@ -35,25 +35,20 @@ def generate_timestamp():
     now_utc = datetime.now(local_tz)
     return now_utc.isoformat()
 
-def monitor_and_update_firestore_bigquery(interval=1):
+def monitor_and_update_firestore_bigquery(interval=2):
     previous_status = None
     table_id = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
     doc_ref = firestore_client.collection(FIRESTORE_COLLECTION).document(MACHINE_NAME)
-
+    timestamp = generate_timestamp()
     while True:
         try:
-            timestamp = generate_timestamp()
             data = {
                 "Timestamp": timestamp,
                 "Machine": MACHINE_NAME,
-                "Location Name": CURRENT_LOCATION,
-                "Status": "Running"
             }
 
             try:
-                ts = datetime.fromisoformat(data["Timestamp"])
-                if previous_status == data["Status"]:
-                    doc_ref.update({"PI_Timestamp": ts})
+                doc_ref.update({"PI_Timestamp": timestamp})
             except Exception as e:
                 print(f"Firestore update error: {e}")
 
