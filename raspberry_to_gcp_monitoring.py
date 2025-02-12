@@ -54,7 +54,7 @@ def monitor_and_update_firestore_bigquery(interval=2):
 
             try:
                 # Specify the location since the table is in the US region
-                errors = bigquery_client.insert_rows_json(table_id, [data], location="US")
+                errors = bigquery_client.insert_rows_json(table_id, [data])
                 if errors:
                     print(f"BigQuery errors: {errors}")
             except Exception as e:
