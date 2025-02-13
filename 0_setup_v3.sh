@@ -2,23 +2,25 @@
 # ==============================================================================
 # Purpose:
 # This script automates system maintenance, configures USB mass storage
-# gadget functionality, and sets up a Python virtual environment on a Raspberry Pi.
-# It performs the following tasks:
+# gadget functionality, sets up a Python virtual environment, and schedules
+# daily reboots at 5:30 AM and 7:00 PM local time on a Raspberry Pi.
+#
+# The script performs the following tasks:
 #
 # 1. Updates package lists and upgrades installed packages.
 # 2. Installs required utilities (mtools, dos2unix, and python3-pip).
-# 3. Disables Wi-Fi power management to improve connectivity stability.
-# 4. Disables USB power output for power management or device-specific needs.
+# 3. Disables Wi-Fi power management to improve connectivity.
+# 4. Disables USB power output for device-specific needs.
 # 5. Sets up USB mass storage by:
 #    - Creating a USB image file.
 #    - Formatting the image with a FAT32 filesystem.
-#    - Configuring the necessary kernel modules (dwc2 and g_mass_storage) and 
-#      their parameters.
-#    - Updating mtools configuration to interact with the USB image.
+#    - Configuring kernel modules (dwc2 and g_mass_storage) and updating
+#      mtools configuration.
 # 6. Configures a Python virtual environment by:
 #    - Creating the virtual environment (if not already present).
 #    - Upgrading pip.
-#    - Installing required Python packages for Google Cloud and time zone support.
+#    - Installing required Python packages.
+# 7. Creates a cron job to reboot the system daily at 5:30 AM and 7:00 PM.
 #
 # After executing these steps, the script reboots the system to apply all changes.
 # ==============================================================================
@@ -202,10 +204,23 @@ echo "Installing required Python packages..."
 python3 -m pip install --no-cache-dir google-cloud-bigquery google-cloud-firestore google-auth pytz || error_exit "Failed to install Python packages."
 deactivate
 
+# ──────────────────────────────────────────────────────────────
+# Schedule Daily Reboots via Cron
+# ──────────────────────────────────────────────────────────────
+echo "Scheduling daily reboots at 5:30 AM and 7:00 PM local time..."
+CRON_FILE="/etc/cron.d/scheduled_reboot"
+cat <<EOF > "$CRON_FILE"
+# Reboot the system daily at 5:30 AM and 7:00 PM (local time)
+30 5 * * * root /sbin/reboot
+0 19 * * * root /sbin/reboot
+EOF
+chmod 644 "$CRON_FILE"
+echo "Cron job for scheduled reboots created at $CRON_FILE."
+
 # Final message and reboot
 echo ""
-echo "USB mass storage setup and Python environment configuration are complete."
-echo "The system will reboot now to apply changes."
+echo "USB mass storage setup, Python environment configuration, and reboot scheduling are complete."
+echo "The system will now reboot to apply all changes."
 echo "=========================================================="
 echo ""
 reboot now
