@@ -44,6 +44,21 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+# ------------------------------------------------------------------------------
+# Raspberry Pi initial configuration block (run only once)
+# ------------------------------------------------------------------------------
+if [ ! -f /etc/.raspi_configured ]; then
+    echo "Performing initial Raspberry Pi configuration..."
+    # THIS BLOCK AUTOMATES THE RASPBERRY PI CONFIGURATION:
+    # 1. SET BOOT MODE TO CONSOLE AUTOLOGIN (B2) USING raspi-config NON-INTERACTIVE MODE.
+    # 2. EXPAND THE FILESYSTEM TO UTILIZE THE ENTIRE SD CARD.
+    # 3. REBOOT THE SYSTEM TO APPLY CHANGES.
+    sudo raspi-config nonint do_boot_behaviour B2 && \
+    sudo raspi-config nonint do_expand_rootfs && \
+    touch /etc/.raspi_configured && \
+    sudo reboot
+fi
+
 # Update package lists
 echo "Updating package lists..."
 apt update || error_exit "apt update failed."
