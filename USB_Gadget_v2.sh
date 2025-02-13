@@ -1,4 +1,11 @@
 #!/bin/bash
+# ------------------------------------------------------------------
+# This script sets up a USB gadget with mass storage functionality.
+# It loads the necessary kernel modules, mounts configfs, and
+# configures the gadget using a specified USB image file.
+# It also cleans up any previous gadget configurations before
+# creating a new one.
+# ------------------------------------------------------------------
 
 set -e
 
