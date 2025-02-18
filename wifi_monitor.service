@@ -1,0 +1,12 @@
+[Unit]
+Description=WiFi Monitoring Service (Bash)
+After=network.target
+
+[Service]
+ExecStart=/home/pi/wifi_monitor.sh
+Restart=always
+User=pi
+WorkingDirectory=/home/pi
+
+[Install]
+WantedBy=multi-user.target
