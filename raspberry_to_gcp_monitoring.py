@@ -23,8 +23,20 @@ credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCO
 bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
 firestore_client = firestore.Client(project=PROJECT_ID, credentials=credentials)
 
+def reinitialize_clients():
+    """
+    Reinitialize BigQuery and Firestore clients to renew the connection.
+    """
+    global bigquery_client, firestore_client
+    credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE)
+    bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
+    firestore_client = firestore.Client(project=PROJECT_ID, credentials=credentials)
+    print("Reinitialized Firestore and BigQuery clients.")
+
 def generate_timestamp():
-    """Generate a UTC timestamp string in the format 'YYYY-MM-DD HH:MM:SS.ffffff UTC'."""
+    """
+    Generate a UTC timestamp string in the format 'YYYY-MM-DD HH:MM:SS.ffffff UTC'.
+    """
     return datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d %H:%M:%S.%f UTC")
 
 def retry_operation(operation, *args, max_retries=5, base_delay=1, **kwargs):
@@ -50,11 +62,15 @@ def retry_operation(operation, *args, max_retries=5, base_delay=1, **kwargs):
             time.sleep(sleep_time)
 
 def update_firestore(doc_ref, data):
-    """Update a Firestore document with the provided data."""
+    """
+    Update a Firestore document with the provided data.
+    """
     doc_ref.update(data)
 
 def insert_bigquery_rows(table_id, rows):
-    """Insert rows into BigQuery and raise an exception if errors occur."""
+    """
+    Insert rows into BigQuery and raise an exception if errors occur.
+    """
     errors = bigquery_client.insert_rows_json(table_id, rows)
     if errors:
         raise Exception(f"BigQuery errors: {errors}")
@@ -71,27 +87,34 @@ def monitor_and_update_firestore_bigquery(interval=2):
     
     while True:
         try:
-            # Generate timestamp and data payload
+            # Generate timestamp and prepare the data payload
             timestamp = generate_timestamp()
             data = {
                 "Timestamp": timestamp,
                 "Machine": MACHINE_NAME,
             }
-            # Update Firestore with retry logic
+            # Attempt to update Firestore with retries
             try:
                 ts = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S.%f UTC")
                 retry_operation(update_firestore, doc_ref, {"PI_Timestamp": ts})
             except Exception as e:
                 print(f"Firestore update error: {e}")
+                # If Firestore update fails after retries, renew the connection
+                reinitialize_clients()
+                # Update doc_ref with the renewed firestore_client
+                doc_ref = firestore_client.collection(FIRESTORE_COLLECTION).document(MACHINE_NAME)
             
-            # Insert data into BigQuery with retry logic
+            # Attempt to insert data into BigQuery with retries
             try:
                 retry_operation(insert_bigquery_rows, table_id, [data])
             except Exception as e:
                 print(f"BigQuery insert error: {e}")
+                # Renew the BigQuery connection if insertion fails
+                reinitialize_clients()
+            
         except Exception as e:
             print(f"Monitoring error: {e}")
-
+        
         time.sleep(interval)
 
 if __name__ == "__main__":
