@@ -8,9 +8,10 @@ from google.oauth2 import service_account
 #         Configuration
 # ============================
 
-MACHINE_NAME = "UIP 2 - Coteau [G50-H]"
-CURRENT_LOCATION = "Coteau-du-Lac"
-LOCATION_INFO = "POINT(-74.1771 45.3053)"
+# Machine and Location Information
+MACHINE_NAME = "UIP 1 - Calmar [G50-H]"             # Name of the machine
+CURRENT_LOCATION = "Calmar"                  # Current location name
+LOCATION_INFO = "POINT(-113.8070872 53.2569529)"    # Geographical coordinates of the location
 
 SERVICE_ACCOUNT_FILE = "2-auth-key.json"
 PROJECT_ID = "gf-canada-iot"
