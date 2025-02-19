@@ -25,6 +25,8 @@
 # After executing these steps, the script reboots the system to apply all changes.
 # ==============================================================================
 
+#!/bin/bash
+
 # Exit immediately if a command exits with a non-zero status
 set -e
 
@@ -44,20 +46,6 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# ------------------------------------------------------------------------------
-# Raspberry Pi initial configuration block (run only once)
-# ------------------------------------------------------------------------------
-if [ ! -f /etc/.raspi_configured ]; then
-    echo "Performing initial Raspberry Pi configuration..."
-    # THIS BLOCK AUTOMATES THE RASPBERRY PI CONFIGURATION:
-    # 1. SET BOOT MODE TO CONSOLE AUTOLOGIN (B2) USING raspi-config NON-INTERACTIVE MODE.
-    # 2. EXPAND THE FILESYSTEM TO UTILIZE THE ENTIRE SD CARD.
-    # 3. REBOOT THE SYSTEM TO APPLY CHANGES.
-    sudo raspi-config nonint do_boot_behaviour B2
-    sudo raspi-config nonint do_expand_rootfs
-    touch /etc/.raspi_configured
-fi
-
 # Update package lists
 echo "Updating package lists..."
 apt update || error_exit "apt update failed."
@@ -66,9 +54,9 @@ apt update || error_exit "apt update failed."
 echo "Upgrading packages..."
 apt full-upgrade -y || error_exit "apt full-upgrade failed."
 
-# Install required utilities: mtools, dos2unix, and python3-pip
-echo "Installing mtools, dos2unix, and python3-pip..."
-apt install mtools dos2unix python3-pip -y || error_exit "Package installation failed."
+# Install mtools and dos2unix
+echo "Installing mtools and dos2unix..."
+apt install mtools dos2unix -y || error_exit "Package installation failed."
 
 # ──────────────────────────────────────────────────────────────
 # Disable Wi-Fi Power Management
@@ -198,43 +186,10 @@ grep -qxF 'mtools_skip_check=1' "$CONFIG_FILE" || echo 'mtools_skip_check=1' >> 
 
 echo "mtools configuration updated in $CONFIG_FILE."
 
-# ──────────────────────────────────────────────────────────────
-# Python Virtual Environment Setup and Package Installation
-# ──────────────────────────────────────────────────────────────
-echo "Setting up Python virtual environment and installing packages..."
-cd /home/pi/ || error_exit "Failed to change directory to /home/pi/"
-
-# Create virtual environment if it does not exist
-if [ ! -d "venv" ]; then
-    echo "Creating virtual environment in /home/pi/venv..."
-    python3 -m venv venv || error_exit "Failed to create virtual environment."
-fi
-
-# Activate the virtual environment and upgrade/install packages
-source /home/pi/venv/bin/activate || error_exit "Failed to activate virtual environment."
-echo "Upgrading pip..."
-python3 -m pip install --upgrade pip || error_exit "Failed to upgrade pip."
-echo "Installing required Python packages..."
-python3 -m pip install --no-cache-dir google-cloud-bigquery google-cloud-firestore google-auth pytz || error_exit "Failed to install Python packages."
-deactivate
-
-# ──────────────────────────────────────────────────────────────
-# Schedule Daily Reboots via Cron
-# ──────────────────────────────────────────────────────────────
-echo "Scheduling daily reboots at 5:30 AM and 7:00 PM local time..."
-CRON_FILE="/etc/cron.d/scheduled_reboot"
-cat <<EOF > "$CRON_FILE"
-# Reboot the system daily at 5:30 AM and 7:00 PM (local time)
-30 5 * * * root /sbin/reboot
-0 19 * * * root /sbin/reboot
-EOF
-chmod 644 "$CRON_FILE"
-echo "Cron job for scheduled reboots created at $CRON_FILE."
-
 # Final message and reboot
 echo ""
-echo "USB mass storage setup, Python environment configuration, and reboot scheduling are complete."
-echo "The system will now reboot to apply all changes."
+echo "USB mass storage setup is complete."
+echo "The system will reboot now to apply changes."
 echo "=========================================================="
 echo ""
 reboot now
