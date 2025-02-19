@@ -1,12 +1,11 @@
 #!/bin/bash
 # ==============================================================================
-# 0_setup_v3.sh
 # Purpose:
-# This script must be run in ROOT mode (e.g., via "sudo su"). It performs
-# initial USB gadget reset operations (disabling and unbinding g_mass_storage),
-# configures Raspberry Pi-specific settings (boot behavior and filesystem expansion),
-# and then proceeds to update the system, install packages, set up USB mass storage
-# functionality, schedule automatic reboots, and create an empty LOGGER.GAM file if missing.
+# This script automates system maintenance, configures Raspberry Pi-specific
+# settings (boot behavior and filesystem expansion), installs essential packages
+# (including python3-pip), sets up USB mass storage gadget functionality,
+# schedules automatic reboots at 5:50 AM and 8:00 PM, and creates an empty
+# LOGGER.GAM file on the USB storage if missing.
 # ==============================================================================
 set -e  # Exit immediately if any command fails
 
@@ -23,59 +22,23 @@ error_exit() {
 # Root Check: Ensure the script is run as root.
 # ------------------------------------------------------------------------------
 if [[ $EUID -ne 0 ]]; then
-    echo "This script must be run as root. Use 'sudo su' to switch to root."
+    echo ""
+    echo "_______________________________"
+    echo "Please use sudo or run as root."
+    echo "==============================="
+    echo ""
     exit 1
 fi
 
 # ------------------------------------------------------------------------------
 # Configure Raspberry Pi-specific Settings:
 # Description: Set boot behavior to console autologin and expand the filesystem.
-# Note: Running these steps first ensures that the system is configured properly
-#       before performing any further operations.
+# Note: Running these steps first ensures that the system is configured
+#       properly before installing any additional packages.
 # ------------------------------------------------------------------------------
 echo "Configuring Raspberry Pi-specific options..."
 raspi-config nonint do_boot_behaviour B2 || error_exit "Failed to set boot behavior."
 raspi-config nonint do_expand_rootfs || error_exit "Failed to expand filesystem."
-
-# ------------------------------------------------------------------------------
-# USB Gadget Reset and Disable g_mass_storage:
-# Description: Stop using g_mass_storage by unbinding the USB gadget,
-#              removing the module, preventing it from loading at boot by
-#              commenting it out in /etc/modules, and removing its modprobe config.
-# ------------------------------------------------------------------------------
-echo "Resetting USB gadget configuration and disabling g_mass_storage..."
-
-# Unbind USB gadget by writing an empty string to UDC
-if [ -e /sys/kernel/config/usb_gadget/g1/UDC ]; then
-    echo "" > /sys/kernel/config/usb_gadget/g1/UDC
-    echo "USB gadget unbound from UDC."
-else
-    echo "USB gadget UDC not found, skipping unbind."
-fi
-
-# Remove g_mass_storage module if loaded
-if lsmod | grep -q g_mass_storage; then
-    modprobe -r g_mass_storage || echo "Failed to remove g_mass_storage module."
-    echo "g_mass_storage module removed."
-else
-    echo "g_mass_storage module not loaded, skipping removal."
-fi
-
-# Prevent g_mass_storage from loading at boot by commenting it out in /etc/modules
-if [ -f /etc/modules ]; then
-    sed -i 's/^\(g_mass_storage\)/#\1/' /etc/modules
-    echo "g_mass_storage commented out in /etc/modules."
-else
-    echo "/etc/modules not found, skipping modification."
-fi
-
-# Remove the modprobe configuration for g_mass_storage
-if [ -f /etc/modprobe.d/g_mass_storage.conf ]; then
-    rm -f /etc/modprobe.d/g_mass_storage.conf || echo "Failed to remove /etc/modprobe.d/g_mass_storage.conf."
-    echo "Removed /etc/modprobe.d/g_mass_storage.conf."
-else
-    echo "/etc/modprobe.d/g_mass_storage.conf not found, skipping removal."
-fi
 
 # ------------------------------------------------------------------------------
 # System Update and Upgrade:
@@ -148,11 +111,13 @@ echo "All preliminary operations completed successfully."
 # USB MASS STORAGE SETUP:
 # Description: Create and configure a USB image file for mass storage.
 # ------------------------------------------------------------------------------
+# Define the USB image label (max 11 uppercase letters/numbers/underscores)
 USB_IMAGE_LABEL="PIUSB"
 if [ ${#USB_IMAGE_LABEL} -gt 11 ] || [[ ! "$USB_IMAGE_LABEL" =~ ^[A-Z0-9_]+$ ]]; then
     error_exit "USB_IMAGE_LABEL must be up to 11 uppercase letters, numbers, or underscores."
 fi
 
+# Define the path and size of the USB image file
 USB_IMAGE_FILE="/piusb.bin"
 USB_SIZE_MB=2048  # 2GB
 echo "USB Image Label: $USB_IMAGE_LABEL"
@@ -241,9 +206,8 @@ modprobe g_mass_storage || error_exit "Failed to load g_mass_storage module."
 # ------------------------------------------------------------------------------
 # Update mtools Configuration:
 # Description: Configure mtools to recognize the USB image for mass storage.
-# Note: Using root's mtoolsrc file since the script is executed as root.
 # ------------------------------------------------------------------------------
-CONFIG_FILE="/root/.mtoolsrc"
+CONFIG_FILE="/home/pi/.mtoolsrc"
 touch "$CONFIG_FILE"
 grep -qxF 'drive p: file="/piusb.bin" exclusive' "$CONFIG_FILE" || echo 'drive p: file="/piusb.bin" exclusive' >> "$CONFIG_FILE"
 grep -qxF 'mtools_skip_check=1' "$CONFIG_FILE" || echo 'mtools_skip_check=1' >> "$CONFIG_FILE"
