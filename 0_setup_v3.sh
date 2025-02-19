@@ -1,5 +1,6 @@
 #!/bin/bash
 # ==============================================================================
+# 0_setup_v3.sh
 # Purpose:
 # This script must be run in ROOT mode (e.g., via "sudo su"). It performs
 # initial USB gadget reset operations (disabling and unbinding g_mass_storage),
@@ -41,7 +42,6 @@ raspi-config nonint do_expand_rootfs || error_exit "Failed to expand filesystem.
 # Description: Stop using g_mass_storage by unbinding the USB gadget,
 #              removing the module, preventing it from loading at boot by
 #              commenting it out in /etc/modules, and removing its modprobe config.
-#              These operations must occur in root mode.
 # ------------------------------------------------------------------------------
 echo "Resetting USB gadget configuration and disabling g_mass_storage..."
 
@@ -53,7 +53,7 @@ else
     echo "USB gadget UDC not found, skipping unbind."
 fi
 
-# Remove g_mass_storage module if it is loaded
+# Remove g_mass_storage module if loaded
 if lsmod | grep -q g_mass_storage; then
     modprobe -r g_mass_storage || echo "Failed to remove g_mass_storage module."
     echo "g_mass_storage module removed."
@@ -241,8 +241,9 @@ modprobe g_mass_storage || error_exit "Failed to load g_mass_storage module."
 # ------------------------------------------------------------------------------
 # Update mtools Configuration:
 # Description: Configure mtools to recognize the USB image for mass storage.
+# Note: Using root's mtoolsrc file since the script is executed as root.
 # ------------------------------------------------------------------------------
-CONFIG_FILE="/home/pi/.mtoolsrc"
+CONFIG_FILE="/root/.mtoolsrc"
 touch "$CONFIG_FILE"
 grep -qxF 'drive p: file="/piusb.bin" exclusive' "$CONFIG_FILE" || echo 'drive p: file="/piusb.bin" exclusive' >> "$CONFIG_FILE"
 grep -qxF 'mtools_skip_check=1' "$CONFIG_FILE" || echo 'mtools_skip_check=1' >> "$CONFIG_FILE"
