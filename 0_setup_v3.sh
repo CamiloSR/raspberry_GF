@@ -1,5 +1,6 @@
 #!/bin/bash
 # ==============================================================================
+# 0_setup_v3.sh
 # Purpose:
 # This script automates system maintenance, configures Raspberry Pi-specific
 # settings (boot behavior and filesystem expansion), installs essential packages
