@@ -1,5 +1,6 @@
 import time
 import random
+import subprocess
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from google.cloud import bigquery, firestore
@@ -23,11 +24,24 @@ credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCO
 bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
 firestore_client = firestore.Client(project=PROJECT_ID, credentials=credentials)
 
+def restart_wifi():
+    """
+    Restart the Raspberry Pi WiFi connection by bringing down and up the wlan0 interface.
+    This requires appropriate permissions (sudo).
+    """
+    try:
+        subprocess.run(["sudo", "ifconfig", "wlan0", "down"], check=True)
+        time.sleep(2)
+        subprocess.run(["sudo", "ifconfig", "wlan0", "up"], check=True)
+        print("WiFi connection restarted.")
+    except Exception as e:
+        print("Failed to restart WiFi:", e)
+
 def reinitialize_clients():
     """
     Reinitialize BigQuery and Firestore clients to renew the connection.
     """
-    global bigquery_client, firestore_client
+    global bigquery_client, firestore_client, credentials
     credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE)
     bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
     firestore_client = firestore.Client(project=PROJECT_ID, credentials=credentials)
@@ -93,24 +107,26 @@ def monitor_and_update_firestore_bigquery(interval=2):
                 "Timestamp": timestamp,
                 "Machine": MACHINE_NAME,
             }
-            # Attempt to update Firestore with retries
+            # Attempt to update Firestore with retry logic
             try:
                 ts = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S.%f UTC")
                 retry_operation(update_firestore, doc_ref, {"PI_Timestamp": ts})
             except Exception as e:
                 print(f"Firestore update error: {e}")
-                # If Firestore update fails after retries, renew the connection
+                # If Firestore update fails, renew connections and restart WiFi
                 reinitialize_clients()
+                restart_wifi()
                 # Update doc_ref with the renewed firestore_client
                 doc_ref = firestore_client.collection(FIRESTORE_COLLECTION).document(MACHINE_NAME)
             
-            # Attempt to insert data into BigQuery with retries
+            # Attempt to insert data into BigQuery with retry logic
             try:
                 retry_operation(insert_bigquery_rows, table_id, [data])
             except Exception as e:
                 print(f"BigQuery insert error: {e}")
-                # Renew the BigQuery connection if insertion fails
+                # Renew connection and restart WiFi on failure
                 reinitialize_clients()
+                restart_wifi()
             
         except Exception as e:
             print(f"Monitoring error: {e}")
