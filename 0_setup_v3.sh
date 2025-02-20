@@ -42,8 +42,9 @@ raspi-config nonint do_boot_behaviour B2 || error_exit "Failed to set boot behav
 raspi-config nonint do_expand_rootfs || error_exit "Failed to expand filesystem."
 
 # ------------------------------------------------------------------------------
-# System Update and Upgrade:
-# Description: Update package lists and upgrade all installed packages.
+# System Update and Package Installation
+# Description: Updates package lists, upgrades packages, and installs
+# essential utilities (mtools and dos2unix).
 # ------------------------------------------------------------------------------
 echo "Updating package lists..."
 apt update || error_exit "apt update failed."
@@ -51,19 +52,15 @@ apt update || error_exit "apt update failed."
 echo "Upgrading packages..."
 apt full-upgrade -y || error_exit "apt full-upgrade failed."
 
+echo "Installing mtools and dos2unix..."
+apt install mtools dos2unix -y || error_exit "Package installation failed."
+
 # ------------------------------------------------------------------------------
 # Install python3-pip:
 # Description: Install the python3-pip package.
 # ------------------------------------------------------------------------------
 echo "Installing python3-pip..."
 apt install python3-pip -y || error_exit "Failed to install python3-pip."
-
-# ------------------------------------------------------------------------------
-# Install Additional Packages:
-# Description: Install mtools and dos2unix for USB mass storage and file conversion.
-# ------------------------------------------------------------------------------
-echo "Installing mtools and dos2unix..."
-apt install mtools dos2unix -y || error_exit "Package installation failed."
 
 # ------------------------------------------------------------------------------
 # Disable Wi-Fi Power Management:
