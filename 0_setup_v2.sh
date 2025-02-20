@@ -31,6 +31,16 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ------------------------------------------------------------------------------
+# Configure Raspberry Pi-specific Settings:
+# Description: Set boot behavior to console autologin and expand the filesystem.
+# Note: Running these steps first ensures that the system is configured
+#       properly before installing any additional packages.
+# ------------------------------------------------------------------------------
+echo "Configuring Raspberry Pi-specific options..."
+raspi-config nonint do_boot_behaviour B2 || error_exit "Failed to set boot behavior."
+raspi-config nonint do_expand_rootfs || error_exit "Failed to expand filesystem."
+
+# ------------------------------------------------------------------------------
 # System Update and Package Installation
 # Description: Updates package lists, upgrades packages, and installs
 # essential utilities (mtools and dos2unix).
@@ -43,6 +53,13 @@ apt full-upgrade -y || error_exit "apt full-upgrade failed."
 
 echo "Installing mtools and dos2unix..."
 apt install mtools dos2unix -y || error_exit "Package installation failed."
+
+# ------------------------------------------------------------------------------
+# Install python3-pip:
+# Description: Install the python3-pip package.
+# ------------------------------------------------------------------------------
+echo "Installing python3-pip..."
+apt install python3-pip -y || error_exit "Failed to install python3-pip."
 
 # ------------------------------------------------------------------------------
 # Disable Wi-Fi Power Management
