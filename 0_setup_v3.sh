@@ -215,17 +215,6 @@ grep -qxF 'mtools_skip_check=1' "$CONFIG_FILE" || echo 'mtools_skip_check=1' >> 
 echo "mtools configuration updated in $CONFIG_FILE."
 
 # ------------------------------------------------------------------------------
-# Create LOGGER.GAM File:
-# Description: Check if LOGGER.GAM exists on the USB storage; if not, create it.
-# ------------------------------------------------------------------------------
-if ! mdir p:/ | grep -qi "LOGGER.GAM"; then
-    echo "Creating empty LOGGER.GAM file on USB storage..."
-    touch /tmp/LOGGER.GAM
-    mcopy /tmp/LOGGER.GAM p:/LOGGER.GAM || error_exit "Failed to create LOGGER.GAM file"
-    rm /tmp/LOGGER.GAM
-fi
-
-# ------------------------------------------------------------------------------
 # Schedule Automatic Reboots:
 # Description: Add cron jobs to reboot the system at 5:50 AM and 8:00 PM local time.
 # ------------------------------------------------------------------------------
