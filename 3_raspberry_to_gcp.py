@@ -1,4 +1,4 @@
-#!/home/pi/raspberry_to_gcp.py
+# /home/pi/raspberry_to_gcp.py
 import time
 import subprocess
 import logging
