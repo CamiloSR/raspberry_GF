@@ -18,7 +18,7 @@ import google.api_core.exceptions
 LOG_FILE: str = "p:/LOGGER.GAM"
 
 # Machine and Location Information
-MACHINE_NAME: str = "UIP 1 - Calmar [G50-H]"  # Name of the machine
+MACHINE_NAME: str = "UIP 1 [G50-H] - Calmar"  # Name of the machine
 CURRENT_LOCATION: str = "Calmar"                # Current location name
 LOCATION_INFO: str = "POINT(-113.8070872 53.2569529)"  # Geographical coordinates of the location
 
@@ -34,9 +34,9 @@ FIRESTORE_COLLECTION: str = "gamma_machines_status"  # Firestore collection name
 # ============================
 MAX_ATTEMPTS_BQ: int = 3            # Maximum attempts for BigQuery
 INITIAL_DELAY_BQ: int = 3           # Initial delay (in seconds) for BigQuery retries
-MAX_ATTEMPTS_FS: int = 3            # Maximum attempts for Firestore
-INITIAL_DELAY_FS: int = 2           # Initial delay (in seconds) for Firestore retries
-COOL_DOWN_PERIOD: int = 25          # Cooldown period (in seconds) after repeated failures
+MAX_ATTEMPTS_FS: int = 4            # Maximum attempts for Firestore
+INITIAL_DELAY_FS: int = 3           # Initial delay (in seconds) for Firestore retries
+COOL_DOWN_PERIOD: int = 70          # Cooldown period (in seconds) after repeated failures
 
 # ============================
 #       Timezone Mapping
