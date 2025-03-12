@@ -9,7 +9,7 @@ from google.oauth2 import service_account
 # ============================
 #      Configuration
 # ============================
-MACHINE_NAME = "UIP 2 - Coteau [G50-H]"              # Name of the machine
+MACHINE_NAME = "UIP 2 [G50-H] - Coteau"              # Name of the machine
 CURRENT_LOCATION = "Coteau-du-Lac"                   # Location name (str)
 LOCATION_INFO = "POINT(-74.1771 45.3053)"            # Geographical coordinates (str)
 
