@@ -18,16 +18,16 @@ import google.api_core.exceptions
 LOG_FILE: str = "p:/LOGGER.GAM"
 
 # Machine and Location Information
-MACHINE_NAME: str = "UIP 1 [G50-H] - Calmar"  # Name of the machine
-CURRENT_LOCATION: str = "Calmar"                # Current location name
-LOCATION_INFO: str = "POINT(-113.8070872 53.2569529)"  # Geographical coordinates of the location
+MACHINE_NAME: str = "UIP 2 [G50-H] - Coteau"          # Name of the machine
+CURRENT_LOCATION: str = "Coteau-du-Lac"               # Current location name
+LOCATION_INFO: str = "POINT(-74.1771 45.3053)"        # Geographical coordinates of the location
 
 # Google Cloud Configuration
-SERVICE_ACCOUNT_FILE: str = "2-auth-key.json"   # Path to the service account JSON file
-PROJECT_ID: str = "gf-canada-iot"                 # Google Cloud project ID
-DATASET_ID: str = "GF_CAN_Machines"               # BigQuery dataset ID
-TABLE_ID: str = "gamma-machines-pi"               # BigQuery table ID
-FIRESTORE_COLLECTION: str = "gamma_machines_status"  # Firestore collection name
+SERVICE_ACCOUNT_FILE: str = "2-auth-key.json"         # Path to the service account JSON file
+PROJECT_ID: str = "gf-canada-iot"                     # Google Cloud project ID
+DATASET_ID: str = "GF_CAN_Machines"                   # BigQuery dataset ID
+TABLE_ID: str = "gamma-machines-pi"                   # BigQuery table ID
+FIRESTORE_COLLECTION: str = "gamma_machines_status"   # Firestore collection name
 
 # ============================
 #      Retry Configurations
