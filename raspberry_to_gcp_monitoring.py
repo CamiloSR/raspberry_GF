@@ -9,9 +9,9 @@ from google.oauth2 import service_account
 # ============================
 #      Configuration
 # ============================
-MACHINE_NAME = "UIP 2 [G50-H] - Coteau"              # Name of the machine
-CURRENT_LOCATION = "Coteau-du-Lac"                   # Location name (str)
-LOCATION_INFO = "POINT(-74.1771 45.3053)"            # Geographical coordinates (str)
+MACHINE_NAME = "PI Zero Home Run - MTL"              # Name of the machine
+CURRENT_LOCATION = "Montreal"                        # Location name (str)
+LOCATION_INFO = "POINT(-73.5961598 45.4748343)"      # Geographical coordinates (str)
 
 SERVICE_ACCOUNT_FILE = "2-auth-key.json"             # Path to GCP service account file (str)
 PROJECT_ID = "gf-canada-iot"                         # GCP project ID (str)
