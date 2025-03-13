@@ -9,7 +9,7 @@ from google.oauth2 import service_account
 # ============================
 #      Configuration
 # ============================
-MACHINE_NAME = "PI Zero Home Run - MTL"              # Name of the machine
+MACHINE_NAME = "PI Zero Home Test - MTL"             # Name of the machine
 CURRENT_LOCATION = "Montreal"                        # Location name (str)
 LOCATION_INFO = "POINT(-73.5961598 45.4748343)"      # Geographical coordinates (str)
 
