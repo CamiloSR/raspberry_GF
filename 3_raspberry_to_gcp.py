@@ -18,7 +18,7 @@ import google.api_core.exceptions
 LOG_FILE: str = "p:/LOGGER.GAM"
 
 # Machine and Location Information
-MACHINE_NAME: str = "UIP 1 [G50-H] - Coteau"          # Name of the machine
+MACHINE_NAME: str = "UIP 2 [G50-H] - Coteau"          # Name of the machine
 CURRENT_LOCATION: str = "Coteau-du-Lac"               # Current location name
 LOCATION_INFO: str = "POINT(-74.1771 45.3053)"        # Geographical coordinates of the location
 
