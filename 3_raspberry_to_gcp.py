@@ -18,25 +18,25 @@ import google.api_core.exceptions
 LOG_FILE: str = "p:/LOGGER.GAM"
 
 # Machine and Location Information
-MACHINE_NAME: str = "UIP 2 [G50-H] - Coteau"          # Name of the machine
-CURRENT_LOCATION: str = "Coteau-du-Lac"               # Current location name
-LOCATION_INFO: str = "POINT(-74.1771 45.3053)"        # Geographical coordinates of the location
+MACHINE_NAME: str = "UIP 1 - Calmar [G50-H]"  # Name of the machine
+CURRENT_LOCATION: str = "Calmar"                # Current location name
+LOCATION_INFO: str = "POINT(-113.8070872 53.2569529)"  # Geographical coordinates of the location
 
 # Google Cloud Configuration
-SERVICE_ACCOUNT_FILE: str = "2-auth-key.json"         # Path to the service account JSON file
-PROJECT_ID: str = "gf-canada-iot"                     # Google Cloud project ID
-DATASET_ID: str = "GF_CAN_Machines"                   # BigQuery dataset ID
-TABLE_ID: str = "gamma-machines-pi"                   # BigQuery table ID
-FIRESTORE_COLLECTION: str = "gamma_machines_status"   # Firestore collection name
+SERVICE_ACCOUNT_FILE: str = "2-auth-key.json"   # Path to the service account JSON file
+PROJECT_ID: str = "gf-canada-iot"                 # Google Cloud project ID
+DATASET_ID: str = "GF_CAN_Machines"               # BigQuery dataset ID
+TABLE_ID: str = "gamma-machines-pi"               # BigQuery table ID
+FIRESTORE_COLLECTION: str = "gamma_machines_status"  # Firestore collection name
 
 # ============================
 #      Retry Configurations
 # ============================
 MAX_ATTEMPTS_BQ: int = 3            # Maximum attempts for BigQuery
 INITIAL_DELAY_BQ: int = 3           # Initial delay (in seconds) for BigQuery retries
-MAX_ATTEMPTS_FS: int = 4            # Maximum attempts for Firestore
-INITIAL_DELAY_FS: int = 3           # Initial delay (in seconds) for Firestore retries
-COOL_DOWN_PERIOD: int = 70          # Cooldown period (in seconds) after repeated failures
+MAX_ATTEMPTS_FS: int = 3            # Maximum attempts for Firestore
+INITIAL_DELAY_FS: int = 2           # Initial delay (in seconds) for Firestore retries
+COOL_DOWN_PERIOD: int = 25          # Cooldown period (in seconds) after repeated failures
 
 # ============================
 #       Timezone Mapping
@@ -263,9 +263,23 @@ def continuously_monitor(interval: int = 1) -> None:
                     status: str = "Running" if last_digit != third_last_digit and last_digit != 0 else "Stopped"
                     last_with_status: str = f"{last.strip()};{status}"
                     previous_status: Optional[str] = last_sent.get('Status') if last_sent is not None else None
+                    previous_ts = last_sent.get('PI_Timestamp') if last_sent and 'PI_Timestamp' in last_sent else None
                     data: Optional[Dict[str, Any]] = parse_log_line(last_with_status)
+                    
+                    # Only update Firestore if status changed OR 5+ min have passed since last update
+                    update_needed = False
                     if data:
-                        update_firestore(data, previous_status)
+                        current_ts = datetime.fromisoformat(data["Timestamp"])
+                        if status != previous_status:
+                            update_needed = True
+                        elif previous_ts:
+                            if isinstance(previous_ts, str):
+                                previous_ts = datetime.fromisoformat(previous_ts)
+                            if abs((current_ts - previous_ts).total_seconds()) >= 300:
+                                update_needed = True
+
+                        if update_needed:
+                            update_firestore(data, previous_status)
                         if data == last_sent:
                             continue
                         send_to_bigquery(data)
