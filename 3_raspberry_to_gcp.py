@@ -269,14 +269,14 @@ def continuously_monitor(interval: int = 1) -> None:
                     # Only update Firestore if status changed OR 5+ min have passed since last update
                     update_needed = False
                     if data:
-                        current_ts = datetime.fromisoformat(data["Timestamp"])
+                        # current_ts = datetime.fromisoformat(data["Timestamp"])
                         if status != previous_status:
                             update_needed = True
-                        elif previous_ts:
-                            if isinstance(previous_ts, str):
-                                previous_ts = datetime.fromisoformat(previous_ts)
-                            if abs((current_ts - previous_ts).total_seconds()) >= 300:
-                                update_needed = True
+                        # elif previous_ts:
+                        #     if isinstance(previous_ts, str):
+                        #         previous_ts = datetime.fromisoformat(previous_ts)
+                        #     if abs((current_ts - previous_ts).total_seconds()) >= 300:
+                        #         update_needed = True
 
                         if update_needed:
                             update_firestore(data, previous_status)
