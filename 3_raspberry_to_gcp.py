@@ -19,8 +19,8 @@ LOG_FILE: str = "p:/LOGGER.GAM"
 
 # Machine and Location Information
 MACHINE_NAME: str = "UIP 1 [G50-H] - Coteau"  # Name of the machine
-CURRENT_LOCATION: str = "Calmar"                # Current location name
-LOCATION_INFO: str = "POINT(-113.8070872 53.2569529)"  # Geographical coordinates of the location
+CURRENT_LOCATION = "Coteau-du-Lac"              # Current location name
+LOCATION_INFO = "POINT(-74.1771 45.3053)"       # Geographical coordinates of the location   
 
 # Google Cloud Configuration
 SERVICE_ACCOUNT_FILE: str = "2-auth-key.json"   # Path to the service account JSON file
