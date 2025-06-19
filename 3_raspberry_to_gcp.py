@@ -263,23 +263,9 @@ def continuously_monitor(interval: int = 1) -> None:
                     status: str = "Running" if last_digit != third_last_digit and last_digit != 0 else "Stopped"
                     last_with_status: str = f"{last.strip()};{status}"
                     previous_status: Optional[str] = last_sent.get('Status') if last_sent is not None else None
-                    previous_ts = last_sent.get('PI_Timestamp') if last_sent and 'PI_Timestamp' in last_sent else None
                     data: Optional[Dict[str, Any]] = parse_log_line(last_with_status)
-                    
-                    # Only update Firestore if status changed OR 5+ min have passed since last update
-                    update_needed = False
                     if data:
-                        # current_ts = datetime.fromisoformat(data["Timestamp"])
-                        if status != previous_status:
-                            update_needed = True
-                        # elif previous_ts:
-                        #     if isinstance(previous_ts, str):
-                        #         previous_ts = datetime.fromisoformat(previous_ts)
-                        #     if abs((current_ts - previous_ts).total_seconds()) >= 300:
-                        #         update_needed = True
-
-                        if update_needed:
-                            update_firestore(data, previous_status)
+                        update_firestore(data, previous_status)
                         if data == last_sent:
                             continue
                         send_to_bigquery(data)
