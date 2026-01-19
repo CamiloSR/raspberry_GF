@@ -6,7 +6,7 @@ pi_csr_123
 
 
 # STEP 1: CREATE THE FILE: usbsetup.sh from GitHub and excecute it:
-sudo wget https://raw.githubusercontent.com/CamiloSR/raspberry_GF/main/0_setup_v3.sh -O usbsetup.sh
+sudo wget https://raw.githubusercontent.com/CamiloSR/raspberry_GF/main/0_setup_v4.sh -O usbsetup.sh
 sudo dos2unix usbsetup.sh
 sudo chmod +x usbsetup.sh
 sudo ./usbsetup.sh
