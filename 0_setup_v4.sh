@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# 0_setup_v4.sh
+# 0_setup_v4.sh (Fixed Version)
 # Purpose:
 # This script automates system maintenance, configures Raspberry Pi-specific
 # settings (boot behavior and filesystem expansion), installs essential packages
@@ -32,6 +32,15 @@ if [[ $EUID -ne 0 ]]; then
     echo ""
     exit 1
 fi
+
+# ------------------------------------------------------------------------------
+# Configure Timezone:
+# Description: Set the timezone to a default value. Change as needed.
+# ------------------------------------------------------------------------------
+echo "Configuring timezone..."
+TIMEZONE="America/New_York"  # Change this to your desired timezone
+timedatectl set-timezone "$TIMEZONE" || error_exit "Failed to set timezone."
+echo "Timezone set to $TIMEZONE."
 
 # ------------------------------------------------------------------------------
 # Configure Raspberry Pi-specific Settings:
@@ -198,20 +207,39 @@ chmod 666 "$USB_IMAGE_FILE" || error_exit "Failed to set permissions on USB imag
 
 # ------------------------------------------------------------------------------
 # Update mtools Configuration:
-# Description: Configure mtools to recognize the USB image for mass storage.
+# Description: Configure mtools system-wide in /etc/mtools.conf for both root and users.
 # ------------------------------------------------------------------------------
-CONFIG_FILE="/home/pi/.mtoolsrc"
-touch "$CONFIG_FILE"
-grep -qxF 'drive p: file="/piusb.bin" exclusive' "$CONFIG_FILE" || echo 'drive p: file="/piusb.bin" exclusive' >> "$CONFIG_FILE"
-grep -qxF 'mtools_skip_check=1' "$CONFIG_FILE" || echo 'mtools_skip_check=1' >> "$CONFIG_FILE"
-echo "mtools configuration updated in $CONFIG_FILE."
+MTOOLS_CONF="/etc/mtools.conf"
+echo "Configuring mtools in $MTOOLS_CONF..."
+if ! grep -q "drive p: file=\"$USB_IMAGE_FILE\"" "$MTOOLS_CONF" 2>/dev/null; then
+    {
+        echo ""
+        echo "# USB Mass Storage Configuration"
+        echo "drive p: file=\"$USB_IMAGE_FILE\" exclusive"
+        echo "mtools_skip_check=1"
+    } >> "$MTOOLS_CONF"
+    echo "mtools configuration added to $MTOOLS_CONF."
+else
+    echo "mtools configuration already exists in $MTOOLS_CONF."
+fi
+
+# Also create user-specific config for pi user for convenience
+PI_MTOOLS="/home/pi/.mtoolsrc"
+echo "Creating mtools config for pi user..."
+cat > "$PI_MTOOLS" <<EOF
+drive p: file="$USB_IMAGE_FILE" exclusive
+mtools_skip_check=1
+EOF
+chown pi:pi "$PI_MTOOLS" || error_exit "Failed to set ownership on $PI_MTOOLS."
+chmod 644 "$PI_MTOOLS"
+echo "User-specific mtools configuration created at $PI_MTOOLS."
 
 # ------------------------------------------------------------------------------
 # Create LOGGER.GAM if Missing:
 # Description: Create an initial LOGGER.GAM file on the USB storage with header and sample data if it does not exist.
 # ------------------------------------------------------------------------------
 echo "Checking for LOGGER.GAM on USB storage..."
-if ! mdir p:/ | grep -qi 'LOGGER[[:space:]]\+GAM'; then
+if ! mdir -i "$USB_IMAGE_FILE" :: | grep -qi 'LOGGER[[:space:]]\+GAM'; then
     echo "Creating LOGGER.GAM file on USB storage..."
     cat <<EOF > /tmp/LOGGER.GAM
 GAMA LOG TYPE: G-250 H D;VERSION: 090617;METRIC: N
@@ -219,23 +247,17 @@ GAMA LOG TYPE: G-250 H D;VERSION: 090617;METRIC: N
 03-02-2025 12:54:58;91597;82;80;90;88;81;69;500;1;0;0;630;790;940;0
 03-02-2025 12:55:00;91597;82;80;89;88;81;69;500;1;0;0;620;790;941;0
 EOF
-    mcopy /tmp/LOGGER.GAM p:/LOGGER.GAM || error_exit "Failed to create LOGGER.GAM file"
+    mcopy -i "$USB_IMAGE_FILE" /tmp/LOGGER.GAM ::LOGGER.GAM || error_exit "Failed to create LOGGER.GAM file"
     rm /tmp/LOGGER.GAM
+    echo "LOGGER.GAM created successfully."
 else
     echo "LOGGER.GAM already exists. Skipping creation."
 fi
 
 # ------------------------------------------------------------------------------
-# Load g_mass_storage Module:
-# Description: Load the g_mass_storage module with the created USB image.
-# ------------------------------------------------------------------------------
-echo "Loading g_mass_storage module with $USB_IMAGE_FILE..."
-modprobe -r g_mass_storage || true
-modprobe g_mass_storage || error_exit "Failed to load g_mass_storage module."
-
-# ------------------------------------------------------------------------------
 # Install Log Rotation Script for Memory Management:
 # Description: Install a script to rotate LOGGER.GAM (keep header + last 4 lines, append rest to LOGS_BKP.GAM).
+# Includes lockfile mechanism to prevent rotation during active operations.
 # ------------------------------------------------------------------------------
 echo "Installing log rotation script..."
 cat >/usr/local/sbin/rotate_logger.sh <<'ROTATE_EOF'
@@ -243,43 +265,73 @@ cat >/usr/local/sbin/rotate_logger.sh <<'ROTATE_EOF'
 set -euo pipefail
 
 IMG="/piusb.bin"
+LOCKFILE="/var/lock/rotate_logger.lock"
+LOGFILE="/var/log/rotate_logger.log"
+
+# Function to log messages
+log_msg() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOGFILE"
+}
+
+# Acquire lock to prevent concurrent rotations
+exec 200>"$LOCKFILE"
+if ! flock -n 200; then
+    log_msg "Another rotation is in progress. Exiting."
+    exit 0
+fi
+
+log_msg "Starting log rotation..."
 
 # Try to copy LOGGER.GAM; if missing, exit
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 if ! mcopy -n -i "$IMG" ::LOGGER.GAM "$tmp/LOGGER.GAM" 2>/dev/null; then
-    echo "LOGGER.GAM not found on image"
+    log_msg "LOGGER.GAM not found on image. Nothing to rotate."
     exit 0
 fi
 
 lines=$(wc -l < "$tmp/LOGGER.GAM")
+log_msg "LOGGER.GAM has $lines lines."
+
 if (( lines <= 5 )); then
-    echo "LOGGER.GAM has <=5 lines; nothing to rotate."
+    log_msg "LOGGER.GAM has <=5 lines; nothing to rotate."
     exit 0
 fi
 
+# Extract header, tail, and body
 head -n 1 "$tmp/LOGGER.GAM" >"$tmp/header"
 tail -n 4 "$tmp/LOGGER.GAM" >"$tmp/tail"
 sed -n '2,$p' "$tmp/LOGGER.GAM" | head -n $((lines-5)) >"$tmp/body" || true
 
 # Pull existing backup (if any)
 if mcopy -n -i "$IMG" ::LOGS_BKP.GAM "$tmp/LOGS_BKP.GAM" 2>/dev/null; then
-    : # pulled existing
+    log_msg "Found existing LOGS_BKP.GAM."
 else
+    log_msg "No existing LOGS_BKP.GAM found. Creating new one."
     : >"$tmp/LOGS_BKP.GAM"
 fi
 
 # Append body to backup and write back
 if [ -s "$tmp/body" ]; then
+    body_lines=$(wc -l < "$tmp/body")
+    log_msg "Appending $body_lines lines to LOGS_BKP.GAM."
     cat "$tmp/body" >>"$tmp/LOGS_BKP.GAM"
-    mcopy -o -i "$IMG" "$tmp/LOGS_BKP.GAM" ::LOGS_BKP.GAM
+    mcopy -o -i "$IMG" "$tmp/LOGS_BKP.GAM" ::LOGS_BKP.GAM || {
+        log_msg "ERROR: Failed to write LOGS_BKP.GAM"
+        exit 1
+    }
 fi
 
 # Rebuild LOGGER.GAM (header + last 4 lines)
 cat "$tmp/header" "$tmp/tail" >"$tmp/LOGGER.NEW"
-mcopy -o -i "$IMG" "$tmp/LOGGER.NEW" ::LOGGER.GAM
-echo "Rotation complete."
+mcopy -o -i "$IMG" "$tmp/LOGGER.NEW" ::LOGGER.GAM || {
+    log_msg "ERROR: Failed to write new LOGGER.GAM"
+    exit 1
+}
+
+log_msg "Rotation complete. LOGGER.GAM now has 5 lines (header + 4 data lines)."
 ROTATE_EOF
 chmod +x /usr/local/sbin/rotate_logger.sh
+echo "Log rotation script installed at /usr/local/sbin/rotate_logger.sh"
 
 # ------------------------------------------------------------------------------
 # Install Systemd Service for Log Rotation on Boot:
@@ -288,40 +340,66 @@ chmod +x /usr/local/sbin/rotate_logger.sh
 echo "Installing systemd service for log rotation..."
 cat >/etc/systemd/system/rotate-logger.service <<'UNIT_EOF'
 [Unit]
-Description=Rotate LOGGER.GAM each boot
+Description=Rotate LOGGER.GAM on boot
 After=local-fs.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/rotate_logger.sh
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 UNIT_EOF
 systemctl daemon-reload || error_exit "Failed to reload systemd daemon."
 systemctl enable rotate-logger.service || error_exit "Failed to enable rotate-logger.service."
+echo "Systemd service rotate-logger.service enabled."
 
 # ------------------------------------------------------------------------------
 # Schedule Automatic Reboots:
 # Description: Add cron jobs to rotate logs and reboot the system at 5:50 AM and 8:00 PM local time.
+# Using semicolon instead of && to ensure reboot happens even if rotation fails.
 # ------------------------------------------------------------------------------
 CRON_FILE="/etc/cron.d/auto_reboot"
 echo "Scheduling automatic reboots with log rotation..."
 cat <<EOF > "$CRON_FILE"
-# Auto reboot at 5:50 AM and 8:00 PM local time
-50 5 * * * root /usr/local/sbin/rotate_logger.sh && /sbin/shutdown -r now
-0 20 * * * root /usr/local/sbin/rotate_logger.sh && /sbin/shutdown -r now
+# Auto reboot at 5:50 AM and 8:00 PM local time (timezone: $TIMEZONE)
+# Rotation runs first, then system reboots regardless of rotation success
+50 5 * * * root /usr/local/sbin/rotate_logger.sh; /sbin/shutdown -r now
+0 20 * * * root /usr/local/sbin/rotate_logger.sh; /sbin/shutdown -r now
 EOF
 chmod 644 "$CRON_FILE"
 echo "Automatic reboot cron jobs added in $CRON_FILE."
+
+# ------------------------------------------------------------------------------
+# Note about g_mass_storage Module:
+# Description: The module will be loaded automatically on reboot with the configured parameters.
+# We don't load it now to avoid conflicts before reboot.
+# ------------------------------------------------------------------------------
+echo ""
+echo "Note: The g_mass_storage module will be loaded automatically on reboot."
+echo "Module parameters have been configured in $G_MASS_STORAGE_CONF."
 
 # ------------------------------------------------------------------------------
 # Final Message and Reboot:
 # Description: Notify the user of completion and reboot the system.
 # ------------------------------------------------------------------------------
 echo ""
-echo "USB mass storage setup, log rotation, and scheduling complete."
-echo "The system will reboot now to apply changes."
-echo "=========================================================="
+echo "========================================================================"
+echo "Setup Complete!"
+echo "========================================================================"
+echo "Changes made:"
+echo "  - Timezone set to: $TIMEZONE"
+echo "  - USB mass storage configured with $USB_IMAGE_FILE"
+echo "  - LOGGER.GAM initialized on USB storage"
+echo "  - Log rotation script installed with lockfile protection"
+echo "  - Automatic log rotation on boot enabled"
+echo "  - Scheduled reboots at 5:50 AM and 8:00 PM with log rotation"
+echo "  - mtools configured system-wide in /etc/mtools.conf"
 echo ""
+echo "The system will reboot now to apply all changes."
+echo "========================================================================"
+echo ""
+sleep 3
 reboot now
