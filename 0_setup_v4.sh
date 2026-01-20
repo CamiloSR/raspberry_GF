@@ -2,6 +2,7 @@
 # ==============================================================================
 # 0_setup_v4.sh (Fixed Version)
 # Purpose:
+# IMPORTANT: THIS SCRIPT IS INTENDED FOR RAPSBERRY PI ZERO 2 W RUNNING 32BIT LITE VERSION
 # This script automates system maintenance, configures Raspberry Pi-specific
 # settings (boot behavior and filesystem expansion), installs essential packages
 # (including python3-pip), sets up USB mass storage gadget functionality,
