@@ -1,8 +1,8 @@
 #!/bin/bash
 # ==============================================================================
-# 0_setup_v4.sh (Fixed Version)
-# Purpose:
+# V4.0.0
 # IMPORTANT: THIS SCRIPT IS INTENDED FOR RAPSBERRY PI ZERO 2 W RUNNING 32BIT LITE VERSION
+# Purpose:
 # This script automates system maintenance, configures Raspberry Pi-specific
 # settings (boot behavior and filesystem expansion), installs essential packages
 # (including python3-pip), sets up USB mass storage gadget functionality,
@@ -76,31 +76,27 @@ apt install python3-pip -y || error_exit "Failed to install python3-pip."
 
 # ------------------------------------------------------------------------------
 # Disable Wi-Fi Power Management:
-# Description: Append configuration to disable Wi-Fi power management for wlan0.
+# Description: Disable Wi-Fi power saving for wlan0 safely.
+# Notes:
+# - DO NOT add 'nohook wpa_supplicant' to dhcpcd.conf (can break Wi-Fi).
+# - We also remove any previous (incorrect) block that may have been appended.
+# - We apply 'iw' power_save off (non-persistent by itself, but safe).
 # ------------------------------------------------------------------------------
 echo "Disabling Wi-Fi power management..."
 DHCPCD_CONF="/etc/dhcpcd.conf"
 if [ -f "$DHCPCD_CONF" ]; then
-    if ! grep -qx "interface wlan0" "$DHCPCD_CONF"; then
-        {
-            echo ""
-            echo "# Disable Wi-Fi power management"
-            echo "interface wlan0"
-            echo "nohook wpa_supplicant"
-        } >> "$DHCPCD_CONF"
-        echo "Wi-Fi power management lines appended to $DHCPCD_CONF."
-    else
-        echo "Wi-Fi power management already configured. Skipping..."
-    fi
+    # Safe cleanup: remove any previously appended incorrect block, if present
+    sed -i '/# Disable Wi-Fi power management/,+2d' "$DHCPCD_CONF" || true
+fi
 
-    if systemctl list-units --type=service | grep -q "dhcpcd.service"; then
-        systemctl restart dhcpcd || error_exit "Failed to restart dhcpcd."
-        echo "Wi-Fi power management has been disabled."
-    else
-        echo "dhcpcd service not found, skipping restart."
-    fi
+# Disable power saving immediately (best-effort; may fail if interface not up yet)
+iw dev wlan0 set power_save off || true
+
+# Show whether NetworkManager is active (helps decide persistent method later)
+if systemctl is-active --quiet NetworkManager; then
+    echo "NetworkManager detected (NM)."
 else
-    echo "File $DHCPCD_CONF not found, skipping Wi-Fi power management configuration."
+    echo "NetworkManager not active (NOT_NM)."
 fi
 
 # ------------------------------------------------------------------------------
@@ -238,6 +234,8 @@ echo "User-specific mtools configuration created at $PI_MTOOLS."
 # ------------------------------------------------------------------------------
 # Create LOGGER.GAM if Missing:
 # Description: Create an initial LOGGER.GAM file on the USB storage with header and sample data if it does not exist.
+# NOTE: We include 4 sample data lines so the file starts at 5 total lines (header + 4),
+# matching the rotation design ("keep header + last 4 lines").
 # ------------------------------------------------------------------------------
 echo "Checking for LOGGER.GAM on USB storage..."
 if ! mdir -i "$USB_IMAGE_FILE" :: | grep -qi 'LOGGER[[:space:]]\+GAM'; then
@@ -247,6 +245,7 @@ GAMA LOG TYPE: G-250 H D;VERSION: 090617;METRIC: N
 03-02-2025 12:54:56;91597;82;80;90;88;81;69;500;1;0;0;620;770;940;0
 03-02-2025 12:54:58;91597;82;80;90;88;81;69;500;1;0;0;630;790;940;0
 03-02-2025 12:55:00;91597;82;80;89;88;81;69;500;1;0;0;620;790;941;0
+03-02-2025 12:55:02;91597;82;80;89;88;81;69;500;1;0;0;625;795;942;0
 EOF
     mcopy -i "$USB_IMAGE_FILE" /tmp/LOGGER.GAM ::LOGGER.GAM || error_exit "Failed to create LOGGER.GAM file"
     rm /tmp/LOGGER.GAM
