@@ -16,6 +16,22 @@ sudo ./usbsetup.sh
 
 
 # RUN THESE COMMANDS (THIS WILL EXECUTE IN ROOT)\
+
+Do this:
+Unload legacy gadget (safe if not loaded)
+
+sudo modprobe -r g_mass_storage || true
+
+Make sure it won't auto-load at boot
+
+sudo sed -i 's/^[[:space:]]*g_mass_storage[[:space:]]*$/# g_mass_storage/' /etc/modules
+
+# Remove legacy module options file (if it exists)
+sudo rm -f /etc/modprobe.d/g_mass_storage.conf
+Then reboot:
+sudo reboot
+
+
 sudo su
 
 <!-- # Stop Using g_mass_storage, Unmount and unbind it: -->
