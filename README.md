@@ -52,14 +52,19 @@ exit
 # NOW CREATE THIS SCRIPT /usr/bin/usb-gadget.sh
 <!-- remove only if existed previously: sudo rm /usr/bin/usb-gadget.sh -->
 sudo wget https://raw.githubusercontent.com/CamiloSR/raspberry_GF/main/1_USB_Gadget_v2.sh -O /usr/bin/usb-gadget.sh
+
 sudo dos2unix /usr/bin/usb-gadget.sh
+
 sudo chmod +x /usr/bin/usb-gadget.sh
 
 
 # NOW AUTOMATE SERVICE ON BOOT CREATE THE SERVICE FILE...
 sudo wget https://raw.githubusercontent.com/CamiloSR/raspberry_GF/main/2_usb_gadget.service -O /etc/systemd/system/usb-gadget.service
+
 sudo dos2unix /etc/systemd/system/usb-gadget.service
+
 sudo systemctl daemon-reload
+
 sudo systemctl enable usb-gadget.service
 
 sudo reboot
